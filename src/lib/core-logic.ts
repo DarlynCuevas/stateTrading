@@ -269,13 +269,183 @@ export function parseTradingViewCsv(rows: RawTradingViewRow[]): ParsedTrade[] {
   });
 
   // Ordenar cronológicamente (más antiguo primero) para que el equity curve y KPIs tengan coherencia temporal
-  return trades.sort((a, b) => {
+  const sorted = trades.sort((a, b) => {
     const timeA = new Date(a.openTime).getTime();
     const timeB = new Date(b.openTime).getTime();
     if (isNaN(timeA) || isNaN(timeB)) return 0;
     return timeA - timeB;
   });
+
+  return groupOrCleanTrades(sorted);
 }
+
+function isBuySide(sideOrType: string): boolean {
+  const s = sideOrType.toUpperCase();
+  return s.includes("COMPRA") || s.includes("BUY") || s.includes("LONG") || s === "C";
+}
+
+function isSellSide(sideOrType: string): boolean {
+  const s = sideOrType.toUpperCase();
+  return s.includes("VENTA") || s.includes("SELL") || s.includes("SHORT") || s === "V";
+}
+
+function isExplicitCloseText(type: string, raw?: any): boolean {
+  if (!raw) return false;
+  const accion = String(raw["Acción"] || raw["Action"] || raw["Тexto"] || raw["Tipo"] || type || "").toLowerCase();
+  return accion.includes("close") || accion.includes("cierre") || accion.includes("closed");
+}
+
+function groupOrCleanTrades(trades: ParsedTrade[]): ParsedTrade[] {
+  if (!trades || trades.length === 0) return [];
+
+  // 1. Verificar si el CSV ya contiene filas con resultado real (netPnl != 0) o textos explícitos de cierre
+  const hasRealizedOrClose = trades.some(
+    (t) => Math.abs(t.netPnl) > 0.0001 || isExplicitCloseText(t.type, t.raw)
+  );
+
+  if (hasRealizedOrClose) {
+    // Si el archivo ya reporta los cierres con PnL o cierre explícito, filtramos todas las filas que son puras órdenes o ejecuciones de apertura (PnL 0)
+    const filtered = trades.filter((t) => Math.abs(t.netPnl) > 0.0001 || isExplicitCloseText(t.type, t.raw));
+    if (filtered.length > 0) {
+      return filtered;
+    }
+  }
+
+  // 2. Si todo el archivo tiene netPnl == 0 (ej: historial puro de ejecuciones / Fills sin columna PyG),
+  // aplicamos emparejamiento FIFO por símbolo para reconstruir las operaciones completas (Round-Trips).
+  return matchExecutionsFIFO(trades);
+}
+
+function matchExecutionsFIFO(trades: ParsedTrade[]): ParsedTrade[] {
+  const bySymbol = new Map<string, ParsedTrade[]>();
+  trades.forEach((t) => {
+    const sym = t.symbol || "TRADE";
+    if (!bySymbol.has(sym)) bySymbol.set(sym, []);
+    bySymbol.get(sym)!.push(t);
+  });
+
+  const completedTrades: ParsedTrade[] = [];
+  let tradeCounter = 1;
+
+  bySymbol.forEach((symTrades, symbol) => {
+    interface OpenLot {
+      side: "BUY" | "SELL";
+      price: number;
+      qty: number;
+      openTime: string;
+      commission: number;
+    }
+    const openLots: OpenLot[] = [];
+
+    let currentOpenSide: "BUY" | "SELL" | null = null;
+    let accumQty = 0;
+    let accumCost = 0;
+    let accumExitCost = 0;
+    let accumClosedQty = 0;
+    let accumPnl = 0;
+    let accumComm = 0;
+    let firstOpenTime = "";
+    let lastCloseTime = "";
+
+    symTrades.forEach((t) => {
+      const isBuy = isBuySide(t.type);
+      const isSell = isSellSide(t.type);
+      if (!isBuy && !isSell) return;
+
+      const side: "BUY" | "SELL" = isBuy ? "BUY" : "SELL";
+      const price = t.entryPrice || t.exitPrice || 0;
+      let qty = t.quantity || 1;
+      const time = t.openTime;
+      const comm = t.commission || 0;
+
+      if (openLots.length === 0 || openLots[0].side === side) {
+        if (openLots.length === 0) {
+          currentOpenSide = side;
+          accumQty = 0;
+          accumCost = 0;
+          accumExitCost = 0;
+          accumClosedQty = 0;
+          accumPnl = 0;
+          accumComm = 0;
+          firstOpenTime = time;
+        }
+        openLots.push({ side, price, qty, openTime: time, commission: comm });
+        accumQty += qty;
+        accumCost += price * qty;
+        accumComm += comm;
+      } else {
+        accumComm += comm;
+        lastCloseTime = time;
+
+        while (qty > 0 && openLots.length > 0 && openLots[0].side !== side) {
+          const lot = openLots[0];
+          const matchQty = Math.min(qty, lot.qty);
+
+          const diff = side === "SELL" ? price - lot.price : lot.price - price;
+          const pnlPart = diff * matchQty;
+          accumPnl += pnlPart;
+          accumExitCost += price * matchQty;
+          accumClosedQty += matchQty;
+
+          lot.qty -= matchQty;
+          qty -= matchQty;
+
+          if (lot.qty <= 0) {
+            openLots.shift();
+          }
+        }
+
+        if (openLots.length === 0 && accumClosedQty > 0) {
+          const avgEntry = accumQty > 0 ? accumCost / accumQty : price;
+          const avgExit = accumClosedQty > 0 ? accumExitCost / accumClosedQty : price;
+          const netPnl = accumPnl - accumComm;
+
+          const tStart = new Date(firstOpenTime).getTime();
+          const tEnd = new Date(lastCloseTime).getTime();
+          let holdingMins = !isNaN(tStart) && !isNaN(tEnd) ? (tEnd - tStart) / 60000 : 0;
+          if (holdingMins < 0) holdingMins = 0;
+
+          completedTrades.push({
+            id: `fifo-trade-${tradeCounter++}-${Date.now()}`,
+            symbol,
+            type: currentOpenSide === "BUY" ? "LONG (COMPRA)" : "SHORT (VENTA)",
+            openTime: firstOpenTime,
+            entryPrice: Number(avgEntry.toFixed(4)),
+            exitPrice: Number(avgExit.toFixed(4)),
+            pnl: Number(accumPnl.toFixed(2)),
+            commission: Number(accumComm.toFixed(2)),
+            netPnl: Number(netPnl.toFixed(2)),
+            quantity: accumClosedQty,
+            holdingTimeMinutes: Number(holdingMins.toFixed(1)),
+            raw: t.raw,
+          });
+
+          accumQty = 0;
+          accumCost = 0;
+          accumExitCost = 0;
+          accumClosedQty = 0;
+          accumPnl = 0;
+          accumComm = 0;
+          currentOpenSide = null;
+        }
+
+        if (qty > 0) {
+          currentOpenSide = side;
+          accumQty = qty;
+          accumCost = price * qty;
+          accumExitCost = 0;
+          accumClosedQty = 0;
+          accumPnl = 0;
+          firstOpenTime = time;
+          openLots.push({ side, price, qty, openTime: time, commission: 0 });
+        }
+      }
+    });
+  });
+
+  return completedTrades;
+}
+
 
 /**
  * Calcula los KPI Cards a partir de los trades parseados.
