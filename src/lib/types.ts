@@ -79,6 +79,7 @@ export interface HoldingTimeStats {
   avgWinnerMinutes: number;
   avgLoserMinutes: number;
   avgTotalMinutes: number;
+  ratioWinnerLoserTime: number;
   hasTimeData: boolean;
 }
 
