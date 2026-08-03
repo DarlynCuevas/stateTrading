@@ -17,6 +17,7 @@ export function parseCleanNumber(val: string | number | undefined | null): numbe
   if (val === undefined || val === null || val === "") return 0;
   if (typeof val === "number") return isNaN(val) ? 0 : val;
   if (typeof val === "string") {
+    const isAccountingNegative = val.includes("(") && val.includes(")");
     // Quitar letras, monedas y símbolos, dejando dígitos, puntos, comas y signos
     let clean = val.replace(/[^\d.,+-]/g, "").trim();
     if (!clean) return 0;
@@ -34,8 +35,10 @@ export function parseCleanNumber(val: string | number | undefined | null): numbe
       // Ej: 500,00 -> 500.00 o -0,87 -> -0.87
       clean = clean.replace(",", ".");
     }
-    const num = parseFloat(clean);
-    return isNaN(num) ? 0 : num;
+    let num = parseFloat(clean);
+    if (isNaN(num)) return 0;
+    if (isAccountingNegative && num > 0) num = -num;
+    return num;
   }
   return 0;
 }
@@ -353,7 +356,7 @@ function groupOrCleanTrades(trades: ParsedTrade[]): ParsedTrade[] {
 
   if (hasRealizedOrClose) {
     // Si el archivo ya reporta los cierres con PnL o cierre explícito, filtramos todas las filas que son puras órdenes o ejecuciones de apertura (PnL 0)
-    const filtered = trades.filter((t) => Math.abs(t.netPnl) > 0.0001 || isExplicitCloseText(t.type, t.raw));
+    const filtered = trades.filter((t) => Math.abs(t.netPnl) > 0.0001 || isExplicitCloseText(t.type, t.raw) || t.id.includes("tradovate"));
     if (filtered.length > 0) {
       return filtered;
     }
