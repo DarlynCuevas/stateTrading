@@ -80,9 +80,9 @@ export function parseTradingViewCsv(rows: RawTradingViewRow[]): ParsedTrade[] {
 
   rows.forEach((row, idx) => {
     // 0. Detect Tradovate Format
-    if (row["Buy Time"] !== undefined && row["Sell Time"] !== undefined) {
-      const buyTimeStr = String(row["Buy Time"]).trim();
-      const sellTimeStr = String(row["Sell Time"]).trim();
+    if (row["boughtTimestamp"] !== undefined && row["soldTimestamp"] !== undefined) {
+      const buyTimeStr = String(row["boughtTimestamp"]).trim();
+      const sellTimeStr = String(row["soldTimestamp"]).trim();
       
       const buyDate = new Date(buyTimeStr);
       const sellDate = new Date(sellTimeStr);
@@ -102,17 +102,17 @@ export function parseTradingViewCsv(rows: RawTradingViewRow[]): ParsedTrade[] {
         }
       }
 
-      const netPnl = parseCleanNumber(row["P&L"]);
-      const quantity = parseCleanNumber(row["Qty"]);
-      const entryPrice = parseCleanNumber(type === "SHORT (VENTA)" ? row["Sell Price"] : row["Buy Price"]);
-      const exitPrice = parseCleanNumber(type === "SHORT (VENTA)" ? row["Buy Price"] : row["Sell Price"]);
+      const netPnl = parseCleanNumber(row["pnl"]);
+      const quantity = parseCleanNumber(row["qty"]);
+      const entryPrice = parseCleanNumber(type === "SHORT (VENTA)" ? row["sellPrice"] : row["buyPrice"]);
+      const exitPrice = parseCleanNumber(type === "SHORT (VENTA)" ? row["buyPrice"] : row["sellPrice"]);
       
-      const durationVal = row["Duration"];
+      const durationVal = row["duration"];
       const holdingTimeMinutes = parseDurationToMinutes(durationVal);
       
       trades.push({
         id: `trade-tradovate-${idx}-${Date.now()}`,
-        symbol: String(row["Symbol"] || "TRADE").trim(),
+        symbol: String(row["symbol"] || "TRADE").trim(),
         type,
         openTime,
         entryPrice,
