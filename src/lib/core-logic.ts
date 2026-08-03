@@ -79,6 +79,54 @@ export function parseTradingViewCsv(rows: RawTradingViewRow[]): ParsedTrade[] {
   const seenSignatures = new Set<string>();
 
   rows.forEach((row, idx) => {
+    // 0. Detect Tradovate Format
+    if (row["Buy Time"] !== undefined && row["Sell Time"] !== undefined) {
+      const buyTimeStr = String(row["Buy Time"]).trim();
+      const sellTimeStr = String(row["Sell Time"]).trim();
+      
+      const buyDate = new Date(buyTimeStr);
+      const sellDate = new Date(sellTimeStr);
+      const buyTime = buyDate.getTime();
+      const sellTime = sellDate.getTime();
+      
+      let type = "TRADE";
+      let openTime = buyTimeStr;
+      
+      if (!isNaN(buyTime) && !isNaN(sellTime)) {
+        if (buyTime > sellTime) {
+          type = "SHORT (VENTA)";
+          openTime = sellTimeStr;
+        } else {
+          type = "LONG (COMPRA)";
+          openTime = buyTimeStr;
+        }
+      }
+
+      const netPnl = parseCleanNumber(row["P&L"]);
+      const quantity = parseCleanNumber(row["Qty"]);
+      const entryPrice = parseCleanNumber(type === "SHORT (VENTA)" ? row["Sell Price"] : row["Buy Price"]);
+      const exitPrice = parseCleanNumber(type === "SHORT (VENTA)" ? row["Buy Price"] : row["Sell Price"]);
+      
+      const durationVal = row["Duration"];
+      const holdingTimeMinutes = parseDurationToMinutes(durationVal);
+      
+      trades.push({
+        id: `trade-tradovate-${idx}-${Date.now()}`,
+        symbol: String(row["Symbol"] || "TRADE").trim(),
+        type,
+        openTime,
+        entryPrice,
+        exitPrice,
+        pnl: netPnl,
+        commission: 0,
+        netPnl,
+        quantity: quantity || 1,
+        holdingTimeMinutes,
+        raw: row,
+      });
+      return;
+    }
+
     // 1. Omitir filas vacías o canceladas/rechazadas/pendientes
     const estado = String(row["Estado"] || row["Status"] || "").toLowerCase().trim();
     if (

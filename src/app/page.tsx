@@ -39,137 +39,98 @@ import {
   Loader2,
 } from "lucide-react";
 
-// Datos de prueba: simulación semanal cuenta de fondeo $50k
+// Datos de prueba: simulación semanal cuenta de fondeo $50k (Tradovate PDF)
 const SAMPLE_TRADES_RAW: RawTradingViewRow[] = [
-  // ─── Día 2026-07-03: Día con 6 operaciones (Sobreoperativa / Revenge Trading) ───
   {
-    Hora: "2026-07-03 20:25:26",
-    "Saldo anterior": "49880.00",
-    "Saldo posterior": "49730.00",
-    "PyG realizadas (valor)": "-150.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "12m",
-    Acción: "Close short position for symbol CME:MNQ1! at price 20380.00 for 5 units. Position AVG Price was 20365.00",
+    Symbol: "MGCZ6",
+    Qty: "1",
+    "Buy Price": "4113.2",
+    "Buy Time": "08/03/2026 11:50:16",
+    Duration: "6sec",
+    "Sell Time": "08/03/2026 11:50:09",
+    "Sell Price": "4113.2",
+    "P&L": "0.00"
   },
   {
-    Hora: "2026-07-03 18:10:00",
-    "Saldo anterior": "50000.00",
-    "Saldo posterior": "49880.00",
-    "PyG realizadas (valor)": "-120.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "8m",
-    Acción: "Close long position for symbol CME:MES1! at price 5410.00 for 4 units. Position AVG Price was 5416.00",
+    Symbol: "MESU6",
+    Qty: "1",
+    "Buy Price": "7567.25",
+    "Buy Time": "08/03/2026 13:30:56",
+    Duration: "4h 51min 19sec",
+    "Sell Time": "08/03/2026 08:39:36",
+    "Sell Price": "7559.00",
+    "P&L": "-41.25"
   },
   {
-    Hora: "2026-07-03 16:40:12",
-    "Saldo anterior": "49910.00",
-    "Saldo posterior": "50000.00",
-    "PyG realizadas (valor)": "90.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "28m",
-    Acción: "Close short position for symbol CME:MNQ1! at price 20390.00 for 3 units. Position AVG Price was 20405.00",
+    Symbol: "MGCZ6",
+    Qty: "1",
+    "Buy Price": "4094.8",
+    "Buy Time": "08/03/2026 15:17:04",
+    Duration: "1h 9min 41sec",
+    "Sell Time": "08/03/2026 14:07:22",
+    "Sell Price": "4115.3",
+    "P&L": "205.00"
   },
   {
-    Hora: "2026-07-03 15:15:30",
-    "Saldo anterior": "50090.00",
-    "Saldo posterior": "49910.00",
-    "PyG realizadas (valor)": "-180.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "15m",
-    Acción: "Close long position for symbol CME:MNQ1! at price 20410.00 for 6 units. Position AVG Price was 20425.00",
+    Symbol: "MESU6",
+    Qty: "1",
+    "Buy Price": "7562.50",
+    "Buy Time": "08/03/2026 15:34:04",
+    Duration: "25min 10sec",
+    "Sell Time": "08/03/2026 15:08:54",
+    "Sell Price": "7562.50",
+    "P&L": "0.00"
   },
   {
-    Hora: "2026-07-03 11:20:05",
-    "Saldo anterior": "49950.00",
-    "Saldo posterior": "50090.00",
-    "PyG realizadas (valor)": "140.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "45m",
-    Acción: "Close long position for symbol CME:MES1! at price 5425.00 for 4 units. Position AVG Price was 5418.00",
+    Symbol: "MESU6",
+    Qty: "1",
+    "Buy Price": "7566.25",
+    "Buy Time": "08/03/2026 15:35:44",
+    Duration: "50sec",
+    "Sell Time": "08/03/2026 15:34:53",
+    "Sell Price": "7557.75",
+    "P&L": "-42.50"
   },
   {
-    Hora: "2026-07-03 09:35:10",
-    "Saldo anterior": "50160.00",
-    "Saldo posterior": "49950.00",
-    "PyG realizadas (valor)": "-210.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "10m",
-    Acción: "Close short position for symbol CME:MNQ1! at price 20440.00 for 7 units. Position AVG Price was 20425.00",
-  },
-  // ─── Día 2026-07-02: Día selectivo con 2 operaciones excelentes ───
-  {
-    Hora: "2026-07-02 16:30:10",
-    "Saldo anterior": "49710.00",
-    "Saldo posterior": "50160.00",
-    "PyG realizadas (valor)": "450.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "1h 15m",
-    Acción:
-      "Close long position for symbol CME:MNQ1! at price 20450.50 for 5 units. Position AVG Price was 20405.50",
+    Symbol: "MESU6",
+    Qty: "1",
+    "Buy Price": "7571.75",
+    "Buy Time": "08/03/2026 15:45:06",
+    Duration: "2min 51sec",
+    "Sell Time": "08/03/2026 15:42:15",
+    "Sell Price": "7563.50",
+    "P&L": "-41.25"
   },
   {
-    Hora: "2026-07-02 11:15:45",
-    "Saldo anterior": "49880.00",
-    "Saldo posterior": "49710.00",
-    "PyG realizadas (valor)": "-170.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "22m",
-    Acción:
-      "Close long position for symbol CME:M6E1! at price 1.08200 for 10 units. Position AVG Price was 1.08370",
-  },
-  // ─── Día 2026-07-01: Día selectivo con 2 operaciones ───
-  {
-    Hora: "2026-07-01 19:45:00",
-    "Saldo anterior": "49540.00",
-    "Saldo posterior": "49880.00",
-    "PyG realizadas (valor)": "340.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "55m",
-    Acción:
-      "Close short position for symbol CME:MES1! at price 5420.25 for 4 units. Position AVG Price was 5437.25",
+    Symbol: "MGCZ6",
+    Qty: "1",
+    "Buy Price": "4090.4",
+    "Buy Time": "08/03/2026 15:45:40",
+    Duration: "26min 44sec",
+    "Sell Time": "08/03/2026 15:18:55",
+    "Sell Price": "4091.9",
+    "P&L": "15.00"
   },
   {
-    Hora: "2026-07-01 14:20:12",
-    "Saldo anterior": "49760.00",
-    "Saldo posterior": "49540.00",
-    "PyG realizadas (valor)": "-220.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "18m",
-    Acción:
-      "Close long position for symbol CME:MNQ1! at price 20280.00 for 4 units. Position AVG Price was 20307.50",
-  },
-  // ─── Día 2026-06-30: Día selectivo con 1 operación ───
-  {
-    Hora: "2026-06-30 18:10:05",
-    "Saldo anterior": "50000.00",
-    "Saldo posterior": "49760.00",
-    "PyG realizadas (valor)": "-240.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "30m",
-    Acción:
-      "Close short position for symbol CME:MNQ1! at price 20350.00 for 8 units. Position AVG Price was 20335.00",
-  },
-  // ─── Semana Anterior (Semana 26 - 2026) para comparar evolución ───
-  {
-    Hora: "2026-06-25 17:30:00",
-    "Saldo anterior": "49680.00",
-    "Saldo posterior": "50000.00",
-    "PyG realizadas (valor)": "320.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "40m",
-    Acción:
-      "Close long position for symbol CME:MES1! at price 5395.00 for 4 units. Position AVG Price was 5379.00",
+    Symbol: "MGCZ6",
+    Qty: "1",
+    "Buy Price": "4090.6",
+    "Buy Time": "08/03/2026 16:02:34",
+    Duration: "3min 29sec",
+    "Sell Time": "08/03/2026 15:59:04",
+    "Sell Price": "4087.4",
+    "P&L": "-32.00"
   },
   {
-    Hora: "2026-06-24 15:10:20",
-    "Saldo anterior": "50000.00",
-    "Saldo posterior": "49680.00",
-    "PyG realizadas (valor)": "-320.00",
-    "PyG realizadas (divisa)": "USD",
-    Duración: "15m",
-    Acción:
-      "Close short position for symbol CME:MNQ1! at price 20310.00 for 5 units. Position AVG Price was 20278.00",
-  },
+    Symbol: "MGCZ6",
+    Qty: "2",
+    "Buy Price": "4092.4",
+    "Buy Time": "08/03/2026 17:39:58",
+    Duration: "21min 3sec",
+    "Sell Time": "08/03/2026 17:18:54",
+    "Sell Price": "4092.4",
+    "P&L": "0.00"
+  }
 ];
 
 export default function Home() {
