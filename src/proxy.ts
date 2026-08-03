@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * Middleware de Next.js para refrescar la sesión de Supabase en cada request.
  * Sin esto, las sesiones expiradas no se renuevan y el usuario pierde el login.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
