@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 
 // Datos de prueba: simulación semanal cuenta de fondeo $50k (Tradovate PDF)
+const SAMPLE_TRADES_RAW: RawTradingViewRow[] = [
   {
     symbol: "MGCZ6",
     _priceFormat: "-1",
