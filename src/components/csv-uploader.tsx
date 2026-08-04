@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Papa from "papaparse";
+import * as React from "react";
 import { Upload, FileText, CheckCircle2, AlertCircle, RefreshCw, Table, Files, X, FileSpreadsheet } from "lucide-react";
 import { RawTradingViewRow } from "@/lib/types";
 
@@ -47,12 +47,12 @@ export function CsvUploader({
   };
 
   const processMultipleFiles = async (files: File[]) => {
-    const csvFiles = files.filter(
-      (f) => f.name.endsWith(".csv") || f.type === "text/csv" || f.type === "application/vnd.ms-excel"
+    const pdfFiles = files.filter(
+      (f) => f.name.toLowerCase().endsWith(".pdf") || f.type === "application/pdf"
     );
 
-    if (csvFiles.length === 0) {
-      setError("No se encontraron archivos CSV válidos. Por favor sube archivos con extensión .csv");
+    if (pdfFiles.length === 0) {
+      setError("No se encontraron archivos PDF válidos. Por favor sube el reporte de desempeño en PDF de Tradovate.");
       return;
     }
 
@@ -60,39 +60,41 @@ export function CsvUploader({
     setIsProcessing(true);
 
     const allRows: RawTradingViewRow[] = [];
-    const allHeaders: Set<string> = new Set();
+    const allHeaders: Set<string> = new Set(["symbol", "qty", "buyPrice", "sellPrice", "boughtTimestamp", "soldTimestamp", "duration", "pnl", "commission"]);
     const filesInfo: FileInfo[] = [];
 
     try {
-      for (const file of csvFiles) {
-        const result = await new Promise<Papa.ParseResult<RawTradingViewRow>>((resolve, reject) => {
-          Papa.parse<RawTradingViewRow>(file, {
-            header: true,
-            skipEmptyLines: true,
-            complete: (results) => resolve(results),
-            error: (err) => reject(err),
-          });
+      for (const file of pdfFiles) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch("/api/parse-pdf", {
+          method: "POST",
+          body: formData,
         });
 
-        if (result.errors && result.errors.length > 0) {
-          console.warn(`Advertencias de parseo en ${file.name}:`, result.errors);
+        if (!res.ok) {
+          throw new Error(`Error en el servidor al parsear PDF: ${res.statusText}`);
         }
 
-        const fields = result.meta.fields || [];
-        fields.forEach((f) => allHeaders.add(f));
+        const data = await res.json();
+        
+        if (data.error) {
+           throw new Error(data.error);
+        }
 
-        if (result.data && result.data.length > 0) {
-          allRows.push(...result.data);
+        if (data.rows && data.rows.length > 0) {
+          allRows.push(...data.rows);
           filesInfo.push({
             name: file.name,
-            rowCount: result.data.length,
-            headers: fields,
+            rowCount: data.rows.length,
+            headers: Array.from(allHeaders),
           });
         }
       }
 
       if (allRows.length === 0) {
-        setError("Los archivos CSV están vacíos o no contienen datos válidos.");
+        setError("No se pudieron extraer operaciones del PDF. Verifica que sea el reporte correcto de Tradovate.");
         setIsProcessing(false);
         return;
       }
@@ -196,7 +198,7 @@ export function CsvUploader({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv"
+          accept=".pdf"
           multiple
           onChange={handleFileChange}
           className="hidden"
@@ -222,7 +224,7 @@ export function CsvUploader({
         <input
           ref={fileInputRef}
           type="file"
-          accept=".csv"
+          accept=".pdf"
           multiple
           onChange={handleFileChange}
           className="hidden"
@@ -237,22 +239,21 @@ export function CsvUploader({
         </div>
 
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1">
-          {isProcessing ? "Procesando archivos..." : "Sube tus archivos CSV de TradingView"}
+          {isProcessing ? "Procesando reporte..." : "Sube tu reporte en PDF de Tradovate"}
         </h3>
 
         <p className="text-sm text-slate-500 dark:text-slate-400 max-w-lg mx-auto mb-5">
-          Arrastra y suelta <strong>todos los archivos CSV a la vez</strong> (Histórico de saldos, Histórico de órdenes, Posiciones, Diario…) — se fusionarán automáticamente.
+          Arrastra y suelta <strong>el reporte de desempeño en PDF</strong> (incluyendo historial de PnL y operaciones) — se analizará automáticamente y se extraerán las comisiones.
         </p>
 
         <div className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm hover:opacity-90 transition-opacity">
           <Files className="h-3.5 w-3.5" />
-          <span>Seleccionar archivos .csv</span>
+          <span>Seleccionar archivo .pdf</span>
         </div>
 
         <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-slate-400 dark:text-slate-500 font-medium">
-          <span>✓ Multi-archivo simultáneo</span>
-          <span>✓ Fusión inteligente sin duplicados</span>
-          <span>✓ 100% local en navegador</span>
+          <span>✓ Soporte completo de PDF Tradovate</span>
+          <span>✓ Extracción de PnL y Comisiones</span>
         </div>
       </div>
 

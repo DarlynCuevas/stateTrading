@@ -113,6 +113,8 @@ export function parseTradingViewCsv(rows: RawTradingViewRow[]): ParsedTrade[] {
       const durationVal = row["duration"];
       const holdingTimeMinutes = parseDurationToMinutes(durationVal);
       
+      const rawCommission = parseCleanNumber(row["commission"]);
+      
       trades.push({
         id: `trade-tradovate-${idx}-${Date.now()}`,
         symbol: String(row["symbol"] || "TRADE").trim(),
@@ -120,9 +122,9 @@ export function parseTradingViewCsv(rows: RawTradingViewRow[]): ParsedTrade[] {
         openTime,
         entryPrice,
         exitPrice,
-        pnl: netPnl,
-        commission: 0,
-        netPnl,
+        pnl: netPnl, // netPnl actually holds Gross PnL from the raw row in Tradovate
+        commission: rawCommission,
+        netPnl: netPnl - rawCommission, // Subtracting commission to get real net PnL (netPnl here is Gross)
         quantity: quantity || 1,
         holdingTimeMinutes,
         raw: row,

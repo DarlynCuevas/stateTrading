@@ -494,13 +494,13 @@ export default function Home() {
               <div className="text-center max-w-2xl mx-auto py-6">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 mb-4 border border-emerald-500/20">
                   <Sparkles className="w-3.5 h-3.5" />
-                  Auditoría de Cuentas de Fondeo &bull; TradingView
+                  Auditoría de Cuentas de Fondeo &bull; Tradovate
                 </span>
                 <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 mb-3">
                   State<span className="text-emerald-500">Trading</span> Journal
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Sube <strong>todos los archivos CSV</strong> exportados desde TradingView de una sola vez — Histórico de saldos, Histórico de órdenes, Posiciones y Diario de operaciones se procesan y fusionan automáticamente.
+                  Sube tu <strong>reporte de desempeño en PDF</strong> exportado desde Tradovate. El motor extraerá automáticamente tus operaciones, ganancias y calculará las comisiones reales.
                 </p>
 
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -528,34 +528,28 @@ export default function Home() {
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
                 <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-semibold text-sm mb-2">
                   <Info className="h-4 w-4 text-blue-500" />
-                  <span>¿Cómo funciona la carga multi-archivo?</span>
+                  <span>¿Cómo funciona la extracción de datos?</span>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-                  TradingView exporta varios CSVs por separado (saldos, órdenes, posiciones, diario). Con StateTrading simplemente seleccionas o arrastras todos a la vez y el motor los fusiona inteligentemente:
+                  Tradovate exporta un reporte en PDF que incluye las métricas globales y el detalle de cada operación. StateTrading procesa este archivo para calcular tus estadísticas reales:
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                   <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">1. Histórico de saldo</div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">1. Extracción de PnL Bruto</div>
                     <div className="text-slate-500 dark:text-slate-400 text-[11px]">
-                      Columna <code className="font-mono text-emerald-500">PyG realizadas</code>
+                      Se extraen las ganancias y pérdidas brutas (Gross PnL) directamente de la tabla de operaciones.
                     </div>
                   </div>
                   <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">2. Histórico de órdenes</div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">2. Cálculo de Comisiones</div>
                     <div className="text-slate-500 dark:text-slate-400 text-[11px]">
-                      Columnas <code className="font-mono">Símbolo</code>, <code className="font-mono">Lado</code>, <code className="font-mono">Precio</code>
+                      Se detecta el total de comisiones y se prorratea equitativamente según la cantidad de contratos operados.
                     </div>
                   </div>
                   <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">3. Posiciones</div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">3. PnL Neto Real</div>
                     <div className="text-slate-500 dark:text-slate-400 text-[11px]">
-                      Posiciones abiertas/cerradas con margen
-                    </div>
-                  </div>
-                  <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100 mb-1">4. Diario de operaciones</div>
-                    <div className="text-slate-500 dark:text-slate-400 text-[11px]">
-                      Log con columna <code className="font-mono">Тexto</code>
+                      Al restar la comisión a cada trade, obtenemos la rentabilidad neta exacta que ves en tu reporte de fondeo.
                     </div>
                   </div>
                 </div>
