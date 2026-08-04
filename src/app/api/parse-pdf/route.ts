@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-const pdfParse = require('pdf-parse');
+import { extractText, getDocumentProxy } from 'unpdf';
 
 export async function POST(req: Request) {
   try {
@@ -11,11 +11,11 @@ export async function POST(req: Request) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const uint8 = new Uint8Array(arrayBuffer);
 
-    // Parse PDF text
-    const data = await pdfParse(buffer);
-    const text = data.text;
+    // Parse PDF text using unpdf (works in server/edge without DOM APIs)
+    const pdf = await getDocumentProxy(uint8);
+    const { text } = await extractText(pdf, { mergePages: true });
 
     // We need to find:
     // 1. Total Trade Fees & Comm.
