@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import * as React from "react";
 import { Upload, FileText, CheckCircle2, AlertCircle, RefreshCw, Table, Files, X, FileSpreadsheet } from "lucide-react";
 import { RawTradingViewRow } from "@/lib/types";
 
