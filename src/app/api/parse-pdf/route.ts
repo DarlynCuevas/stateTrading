@@ -17,12 +17,7 @@ export async function POST(req: Request) {
     const pdf = await getDocumentProxy(uint8);
     const { text } = await extractText(pdf, { mergePages: true });
 
-    // We need to find:
-    // 1. Total Trade Fees & Comm.
-    // 2. # of Contracts
-    // 3. The trades table
-
-    // Extract Total Trade Fees & Comm
+    // ── 1. Extract Total Trade Fees & Comm ──
     // e.g. "Trade Fees & Comm. $(25.06)"
     const feesMatch = text.match(/Trade Fees & Comm\.?\s*\$\(([\d.]+)\)/i) || text.match(/Trade Fees & Comm\.?\s*-\$([\d.]+)/i);
     let totalFees = 0;
@@ -30,64 +25,42 @@ export async function POST(req: Request) {
       totalFees = parseFloat(feesMatch[1]); // Absolute value
     }
 
-    // Extract Total Contracts
-    // e.g. "# of Contracts 42"
-    const contractsMatch = text.match(/# of Contracts\s+(\d+)/i);
-    let totalContracts = 1;
-    if (contractsMatch) {
-      totalContracts = parseInt(contractsMatch[1], 10);
-    }
-    
-    // Calculate commission per contract
-    const commissionPerContract = totalContracts > 0 ? totalFees / totalContracts : 0;
-
-    // Parse Trades
-    // Trades usually follow this line pattern:
-    // Symbol Qty Buy Price Buy Time Duration Sell Time Sell Price P&L
-    // e.g. MGCZ6 1 4113.2 08/03/2026 11:50:16 6sec 08/03/2026 11:50:09 4113.2 $0.00
-    // Sometimes duration is multiline in OCR but pdf-parse might return it differently.
-    // Let's use a regex to find trade lines.
-    
-    // Pattern: (Symbol) (Qty) (Buy Price) (Buy Date Time) (Duration) (Sell Date Time) (Sell Price) (P&L)
-    // Buy Date Time: MM/DD/YYYY HH:MM:SS
+    // ── 2. Extract all trades (WITHOUT commission yet) ──
+    // Pattern: Symbol Qty BuyPrice BuyDateTime Duration SellDateTime SellPrice P&L
     const tradeRegex = /([A-Z0-9]+)\s+(\d+)\s+([\d.]+)\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})\s+((?:\d+[a-z]+\s*)*)\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})\s+([\d.]+)\s+(\$[\d.]+|\$\([\d.]+\)|-\$[\d.]+)/gi;
     
-    const rows: any[] = [];
+    interface RawTradeRow {
+      symbol: string;
+      qty: number;
+      buyPrice: string;
+      sellPrice: string;
+      boughtTimestamp: string;
+      soldTimestamp: string;
+      duration: string;
+      pnl: string;
+    }
+
+    const rawTrades: RawTradeRow[] = [];
     let match;
 
     while ((match = tradeRegex.exec(text)) !== null) {
-      const symbol = match[1];
-      const qty = parseInt(match[2], 10);
-      const buyPrice = match[3];
-      const boughtTimestamp = match[4];
-      const duration = match[5].trim();
-      const soldTimestamp = match[6];
-      const sellPrice = match[7];
-      const pnlRaw = match[8]; // e.g. $205.00 or $(41.25)
-      
-      const tradeCommission = qty * commissionPerContract;
-
-      rows.push({
-        symbol,
-        qty: String(qty),
-        buyPrice,
-        sellPrice,
-        boughtTimestamp,
-        soldTimestamp,
-        duration,
-        pnl: pnlRaw, // Gross PnL
-        commission: String(tradeCommission),
+      rawTrades.push({
+        symbol: match[1],
+        qty: parseInt(match[2], 10),
+        buyPrice: match[3],
+        boughtTimestamp: match[4],
+        duration: match[5].trim(),
+        soldTimestamp: match[6],
+        sellPrice: match[7],
+        pnl: match[8],
       });
     }
 
-    if (rows.length === 0) {
-      // Fallback: If the regex above fails because duration is messy or something, 
-      // let's try a looser split-by-line approach.
+    // Fallback: looser line-by-line approach if regex above finds nothing
+    if (rawTrades.length === 0) {
       const lines = text.split('\n');
       for (let j = 0; j < lines.length; j++) {
         const line = lines[j].trim();
-        // Look for lines containing two dates or spanning multiple lines
-        // Sometimes pdf-parse breaks lines randomly. Let's merge it with the next few lines just in case
         const mergedLine = [line, lines[j+1], lines[j+2]].filter(Boolean).join(' ');
         const dateMatches = mergedLine.match(/\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2}/g);
         
@@ -95,47 +68,50 @@ export async function POST(req: Request) {
           const parts = mergedLine.split(/\s+/);
           if (parts.length >= 8) {
             const symbol = parts[0];
-            const qtyStr = parts[1];
-            const qty = parseInt(qtyStr, 10);
-            
+            const qty = parseInt(parts[1], 10);
             if (isNaN(qty)) continue;
             
             const buyPrice = parts[2];
             const boughtTimestamp = `${parts[3]} ${parts[4]}`;
             
-            // Find sell timestamp index
             const sellDateIdx = parts.findIndex((p, i) => i > 4 && /\d{2}\/\d{2}\/\d{4}/.test(p));
             if (sellDateIdx === -1) continue;
             
-            const durationParts = parts.slice(5, sellDateIdx);
-            const duration = durationParts.join(' ');
-            
+            const duration = parts.slice(5, sellDateIdx).join(' ');
             const soldTimestamp = `${parts[sellDateIdx]} ${parts[sellDateIdx + 1]}`;
             const sellPrice = parts[sellDateIdx + 2];
-            const pnlRaw = parts.slice(sellDateIdx + 3).join(' ');
-            
-            const tradeCommission = qty * commissionPerContract;
+            const pnl = parts.slice(sellDateIdx + 3).join(' ');
 
             // Simple dedupe since we read ahead
-            if (!rows.find(r => r.symbol === symbol && r.boughtTimestamp === boughtTimestamp && r.soldTimestamp === soldTimestamp)) {
-                rows.push({
-                symbol,
-                qty: String(qty),
-                buyPrice,
-                sellPrice,
-                boughtTimestamp,
-                soldTimestamp,
-                duration,
-                pnl: pnlRaw,
-                commission: String(tradeCommission),
-                });
+            if (!rawTrades.find(r => r.symbol === symbol && r.boughtTimestamp === boughtTimestamp && r.soldTimestamp === soldTimestamp)) {
+              rawTrades.push({ symbol, qty, buyPrice, sellPrice, boughtTimestamp, soldTimestamp, duration, pnl });
             }
           }
         }
       }
     }
 
-    return NextResponse.json({ rows, totalFees, totalContracts });
+    // ── 3. Calculate commission per contract based on ACTUAL extracted trades ──
+    // The PDF's "# of Contracts" counts both buy-side and sell-side fills,
+    // so it's double the number of trade-level contracts. Instead, we sum
+    // the qty from our extracted trades to get the real number.
+    const totalExtractedQty = rawTrades.reduce((sum, t) => sum + t.qty, 0);
+    const commissionPerContract = totalExtractedQty > 0 ? totalFees / totalExtractedQty : 0;
+
+    // ── 4. Build final rows with commission assigned ──
+    const rows = rawTrades.map(t => ({
+      symbol: t.symbol,
+      qty: String(t.qty),
+      buyPrice: t.buyPrice,
+      sellPrice: t.sellPrice,
+      boughtTimestamp: t.boughtTimestamp,
+      soldTimestamp: t.soldTimestamp,
+      duration: t.duration,
+      pnl: t.pnl, // Gross PnL
+      commission: String(t.qty * commissionPerContract),
+    }));
+
+    return NextResponse.json({ rows, totalFees, totalExtractedQty });
   } catch (error: any) {
     console.error('PDF Parse error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
