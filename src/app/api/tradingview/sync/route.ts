@@ -39,10 +39,13 @@ export async function POST(req: Request) {
       tvData = await extractTradingViewDesktopData();
     }
 
-    if (!tvData.orders || tvData.orders.length === 0) {
+    const hasTrades = tvData.trades && Array.isArray(tvData.trades) && tvData.trades.length > 0;
+    const hasOrders = tvData.orders && Array.isArray(tvData.orders) && tvData.orders.length > 0;
+
+    if (!hasTrades && !hasOrders) {
       return NextResponse.json({
         success: true,
-        message: "Conectado a TradingView Desktop, pero no hay órdenes recientes en el panel.",
+        message: "Conectado a TradingView Desktop, pero no hay órdenes ni operaciones recientes en el panel.",
         ordersCount: 0,
       });
     }
