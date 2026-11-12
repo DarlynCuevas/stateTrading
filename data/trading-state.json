@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "actualizadoEn": "2026-11-12T11:30:00+01:00",
+  "actualizadoEn": "2026-11-12T14:49:19.072Z",
   "zonaHoraria": "Europe/Madrid",
   "moneda": "USD",
   "cuentas": [
@@ -181,37 +181,63 @@
       "aciertos": [],
       "leccion": "El LB solo tomó 3998.3 y dejó 4001.8 y 4002.9 sin tomar desde el origen 4014.4. El LB bueno fue 4005.9 (02:15). El TP de 3961.5 se alcanzó a las 08:30.",
       "captura": "Trading/Liq/Claude/operaciones/reales/capturas/2026-11-12_MGC_op03_venta_SL.png"
+    },
+    {
+      "id": "R5",
+      "cuentaId": "APEX6339420000008",
+      "real": true,
+      "symbol": "MNQ",
+      "contrato": "MNQZ6",
+      "type": "COMPRA",
+      "openTime": "2026-11-12T14:25:00+01:00",
+      "closeTime": "2026-11-12T14:30:00+01:00",
+      "entryPrice": 28083.75,
+      "exitPrice": 28062.25,
+      "quantity": 1,
+      "pnl": -43,
+      "commission": null,
+      "netPnl": null,
+      "plan": {
+        "sl": 28062.5,
+        "tp": 28370,
+        "valorPunto": 2,
+        "riesgoUsd": 43
+      },
+      "rMultiple": -1,
+      "resultado": "SL",
+      "sesion": "Dato de las 14:30",
+      "setup": "compra en el LB 28013.75 (barrido de los mínimos 28031-28036 y BOS)",
+      "auditor": null,
+      "errores": [
+        "E3",
+        "E4",
+        "E9"
+      ],
+      "aciertos": [],
+      "leccion": "SL de solo 21 pts, dentro del retroceso normal y del ruido del dato. Límite 28091.25 llenado en 28083.75.",
+      "captura": null,
+      "pendiente": "horas aproximadas (orden límite 28091.25); confirmar hora exacta e importe neto"
     }
   ],
   "ordenesAbiertas": [
     {
-      "id": "R4",
-      "cuentaId": "PAAPEX6339420000002",
+      "id": "R6",
+      "cuentaId": "APEX6339420000008",
       "symbol": "MNQ",
       "contrato": "MNQZ6",
-      "type": "VENTA",
-      "tipoOrden": "limitada",
-      "colocadaEn": "2026-11-12T11:00:00+01:00",
-      "entryPrice": 28333.75,
+      "type": "COMPRA",
+      "tipoOrden": "limitada (posición abierta)",
+      "colocadaEn": "2026-11-12T14:30:00+01:00",
+      "entryPrice": 28079.25,
       "quantity": 1,
       "plan": {
-        "sl": 28370.25,
-        "tp": 28130.75,
+        "sl": 28193,
+        "tp": 28698.25,
         "valorPunto": 2,
-        "riesgoUsd": 73
+        "riesgoUsd": 133
       },
-      "auditor": "APROBAR CON AJUSTES",
-      "ajustesAuditor": {
-        "entrada": "28340-28345",
-        "sl": 28380,
-        "tp1": 28163,
-        "tp2": 28140
-      },
-      "cancelarSi": [
-        "14:15 sin llenarse (peticiones de desempleo a las 14:30)",
-        "pierde 28161.5 antes del llenado",
-        "vela de 15m cierra por encima de 28369"
-      ]
+      "auditor": null,
+      "notas": "Abierta en la ventana del dato (E4) y sin auditor (E9). Riesgo inicial 133 $ (~35 % del colchón, E8). SL inicial 28012.75, bajo el extremo del LB 28013.75: sobrevivió al barrido de 28044.25 de las 15:30. TP 28698.25 = máximo de 1H sin tomar del 11 nov (28697.25): es liquidez real, NO es E7. SL a breakeven tras romper 28165."
     }
   ],
   "resumenesSemanales": [
@@ -219,19 +245,20 @@
       "periodId": "2026-W46",
       "label": "Semana del 9 al 13 nov 2026",
       "estado": "provisional",
-      "operaciones": 3,
+      "operaciones": 4,
       "ganadas": 0,
-      "perdidas": 3,
+      "perdidas": 4,
       "breakeven": 0,
       "winRate": 0,
-      "resultadoR": -3,
+      "resultadoR": -4,
       "resultadoUsd": -74.34,
       "resultadoUsdCompleto": false,
       "errores": {
         "E1": 1,
+        "E4": 2,
         "E2": 1,
-        "E3": 1,
-        "E4": 1
+        "E3": 2,
+        "E9": 1
       },
       "aciertos": {},
       "erroresRepetidos": [
@@ -272,5 +299,39 @@
       "A6": "Respetó el horario",
       "A7": "Corrigió la orden después de la auditoría"
     }
-  }
+  },
+  "ordenesHistorial": [
+    {
+      "id": "R4",
+      "cuentaId": "PAAPEX6339420000002",
+      "symbol": "MNQ",
+      "contrato": "MNQZ6",
+      "type": "VENTA",
+      "tipoOrden": "limitada",
+      "colocadaEn": "2026-11-12T11:00:00+01:00",
+      "entryPrice": 28333.75,
+      "quantity": 1,
+      "plan": {
+        "sl": 28370.25,
+        "tp": 28130.75,
+        "valorPunto": 2,
+        "riesgoUsd": 73
+      },
+      "auditor": "APROBAR CON AJUSTES",
+      "ajustesAuditor": {
+        "entrada": "28340-28345",
+        "sl": 28380,
+        "tp1": 28163,
+        "tp2": 28140
+      },
+      "cancelarSi": [
+        "14:15 sin llenarse (peticiones de desempleo a las 14:30)",
+        "pierde 28161.5 antes del llenado",
+        "vela de 15m cierra por encima de 28369"
+      ],
+      "estado": "cancelada",
+      "canceladaEn": "2026-11-12T13:11:20.768Z",
+      "motivo": "Cancelada 14:10: perdió 28161.5 (condición de cancelación) y alcanzó el TP 28130 sin llenar la entrada. Lección: dirección correcta, entrada demasiado alta; el precio no necesitó barrer 28369."
+    }
+  ]
 }

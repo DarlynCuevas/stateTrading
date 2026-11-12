@@ -2,17 +2,42 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { extractTradingViewDesktopData } from "@/lib/tradingview/desktop-reader";
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    // 1. Autenticación: vía Bearer token (desde script local) o vía cookie de sesión (desde la web)
+    const authHeader = req.headers.get("authorization");
+    let user = null;
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "").trim();
+      const { data: { user: u } } = await supabase.auth.getUser(token);
+      user = u;
+    } else {
+      const { data: { user: u } } = await supabase.auth.getUser();
+      user = u;
     }
 
-    // 1. Extraer datos en vivo de TradingView Desktop
-    const tvData = await extractTradingViewDesktopData();
+    if (!user) {
+      return NextResponse.json({ error: "No autorizado. Inicia sesión primero." }, { status: 401 });
+    }
+
+    // 2. Extraer datos: si vienen en el body (desde script de escritorio) se usan directamente;
+    // si no, se intenta extraer del TradingView local del servidor.
+    let tvData: any = null;
+    try {
+      const body = await req.json();
+      if (body && Array.isArray(body.orders)) {
+        tvData = body;
+      }
+    } catch {
+      // Sin body JSON
+    }
+
+    if (!tvData) {
+      tvData = await extractTradingViewDesktopData();
+    }
 
     if (!tvData.orders || tvData.orders.length === 0) {
       return NextResponse.json({
