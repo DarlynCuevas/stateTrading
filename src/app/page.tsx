@@ -35,6 +35,7 @@ import {
   CloudUpload,
   RefreshCw,
   KeyRound,
+  Download,
 } from "lucide-react";
 import { SyncDesktopModal } from "@/components/sync-desktop-modal";
 import { ChangePasswordModal } from "@/components/change-password-modal";
@@ -109,23 +110,23 @@ export default function Home() {
       const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
       if (isLocal) {
-        const res = await fetch("/api/tradingview/sync", { method: "POST" });
-        const data = await res.json();
-        if (!res.ok || data.error) {
-          throw new Error(data.error || "Error al sincronizar con TradingView Desktop");
+        try {
+          const res = await fetch("/api/tradingview/sync", { method: "POST" });
+          const data = await res.json();
+          if (data && data.message) {
+            setSyncStatus(data.message);
+          }
+        } catch {
+          // Si falla en local, continúa refrescando desde Supabase
         }
-        setSyncStatus(data.message);
-      } else {
-        // En la web desplegada en Vercel, abrimos el modal interactivo y refrescamos datos de Supabase
-        setShowSyncModal(true);
       }
 
       if (user?.id) {
         const refreshed = await loadUserDataFromSupabase(user.id);
         setAuditData(refreshed);
-        if (!isLocal) {
-          setSyncStatus("✓ Datos actualizados desde la nube");
-        }
+        const opsCount = refreshed.operations.length;
+        const accCount = refreshed.accounts.length;
+        setSyncStatus(`✓ Sincronizado: ${accCount} cuentas y ${opsCount} trades`);
       }
     } catch (err: any) {
       setSyncStatus(`Error: ${err.message}`);
@@ -628,7 +629,7 @@ export default function Home() {
                 <button
                   onClick={handleSyncTradingViewDesktop}
                   disabled={syncingTV}
-                  title="Sincronizar tus órdenes desde TradingView Desktop"
+                  title="Sincronizar y actualizar las órdenes en vivo"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition-colors cursor-pointer shadow-sm shadow-emerald-500/20 disabled:opacity-60"
                 >
                   {syncingTV ? (
@@ -640,12 +641,11 @@ export default function Home() {
                 </button>
 
                 <button
-                  onClick={handleRefreshData}
-                  disabled={syncingTV}
-                  title="Refrescar datos en vivo desde la base de datos"
-                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                  onClick={() => setShowSyncModal(true)}
+                  title="Descargar sincronizador para Windows / Mac o ver instrucciones"
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors cursor-pointer"
                 >
-                  <RefreshCw className={`h-3.5 w-3.5 ${syncingTV ? "animate-spin" : ""}`} />
+                  <Download className="h-3.5 w-3.5" />
                 </button>
               </div>
             )}

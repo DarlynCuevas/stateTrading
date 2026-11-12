@@ -334,15 +334,32 @@ async function main() {
         console.log(`   - ${c}`);
       }
     }
+    console.log("========================================================");
+    console.log(" 💡 Sincronización continua activa (cada 60 segundos).");
+    console.log("    Puedes MINIMIZAR esta ventana y seguir operando.");
+    console.log("    (Para detener el sincronizador, cierra esta ventana).");
     console.log("========================================================\n");
+
+    // Bucle de sincronización periódica en segundo plano
+    while (true) {
+      await new Promise((r) => setTimeout(r, 60000));
+      const now = new Date().toLocaleTimeString();
+      process.stdout.write(`[${now}] Sincronizando TradingView... `);
+      try {
+        const tvDataLoop = await extractTradingViewData();
+        await uploadToStateTrading(config.appUrl, token, tvDataLoop);
+        console.log("✓ Al día");
+      } catch (loopErr) {
+        console.log(`(Esperando gráfico: ${loopErr.message.split("\n")[0]})`);
+      }
+    }
   } catch (err) {
     console.error("\n❌ ERROR:", err.message);
     console.log("\nSi cambiaste de contraseña o de URL, puedes editar o borrar:");
     console.log(CONFIG_FILE);
-  } finally {
-    console.log("\nCerrando en 4 segundos...");
-    await new Promise((r) => setTimeout(r, 4000));
-    process.exit(0);
+    console.log("\nCerrando en 10 segundos...");
+    await new Promise((r) => setTimeout(r, 10000));
+    process.exit(1);
   }
 }
 
