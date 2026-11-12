@@ -24,6 +24,9 @@ export interface Account {
   pnlDia?: number;
   reglas?: AccountRule;
   activa?: boolean;
+  estado?: "activa" | "quemada" | "cancelada" | "superada";
+  fechaBaja?: string;
+  motivoBaja?: string;
 }
 
 export interface OperationPlan {
@@ -73,6 +76,9 @@ interface RawAccount {
   nombre?: string;
   reglas?: AccountRule;
   activa?: boolean;
+  estado?: "activa" | "quemada" | "cancelada" | "superada";
+  fechaBaja?: string;
+  motivoBaja?: string;
 }
 
 interface RawAccountState {

@@ -36,9 +36,12 @@ import {
   RefreshCw,
   KeyRound,
   Download,
+  ShieldAlert,
+  Flame,
 } from "lucide-react";
 import { SyncDesktopModal } from "@/components/sync-desktop-modal";
 import { ChangePasswordModal } from "@/components/change-password-modal";
+import { AccountsManager } from "@/components/accounts-manager";
 
 // ─── Convierte una Operation del JSON a ParsedTrade para los gráficos/stats ───
 function operationToParsedTrade(op: Operation): ParsedTrade {
@@ -201,28 +204,63 @@ export default function Home() {
     setTimeout(() => setSyncStatus(null), 4000);
   };
 
-  // ─── Cuenta seleccionada ──────────────────────────────────────────
-  const [selectedAccount, setSelectedAccount] = React.useState<string>("all");
-  const accountOptions = React.useMemo(
-    () => ["all", ...auditData.accountIds],
-    [auditData.accountIds],
-  );
+  // ─── Cuenta seleccionada (por defecto "active" = solo cuentas vivas) ──
+  const [selectedAccount, setSelectedAccount] = React.useState<string>("active");
+
+  // Cuentas activas vs inactivas (quemadas o canceladas)
+  const activeAccounts = React.useMemo(() => {
+    return auditData.accounts.filter(
+      (a) => a.activa !== false && a.estado !== "quemada" && a.estado !== "cancelada"
+    );
+  }, [auditData.accounts]);
+
+  const activeAccountIds = React.useMemo(() => {
+    return activeAccounts.map((a) => a.id);
+  }, [activeAccounts]);
+
+  const inactiveAccounts = React.useMemo(() => {
+    return auditData.accounts.filter(
+      (a) => a.activa === false || a.estado === "quemada" || a.estado === "cancelada"
+    );
+  }, [auditData.accounts]);
+
   // Operaciones filtradas según la cuenta seleccionada
   const filteredOps: Operation[] = React.useMemo(() => {
-    if (selectedAccount === "all") return auditData.operations;
-    return auditData.byAccount[selectedAccount] ?? [];
-  }, [auditData, selectedAccount]);
-
-  // Balance real e inicial de la cuenta seleccionada (desde JSON)
-  const { realBalance, realInitialBalance } = React.useMemo(() => {
+    if (selectedAccount === "active") {
+      // SOLO operaciones de cuentas vivas (no suma cuentas quemadas/canceladas)
+      return auditData.operations.filter(
+        (op) => !op.cuentaId || activeAccountIds.includes(op.cuentaId)
+      );
+    }
     if (selectedAccount === "all") {
-      // Suma de balances de todas las cuentas
+      // Todas las operaciones (incluyendo cuentas quemadas/archivadas)
+      return auditData.operations;
+    }
+    return auditData.byAccount[selectedAccount] ?? [];
+  }, [auditData, selectedAccount, activeAccountIds]);
+
+  // Balance real e inicial de la cuenta seleccionada
+  const { realBalance, realInitialBalance } = React.useMemo(() => {
+    if (selectedAccount === "active") {
+      // Suma SOLO de cuentas vivas / activas
+      const totalBalance = activeAccounts.reduce(
+        (sum, a) => sum + (a.balance || 0),
+        0
+      );
+      const totalInitial = activeAccounts.reduce(
+        (sum, a) => sum + (a.balanceInicial || 0),
+        0
+      );
+      return { realBalance: totalBalance, realInitialBalance: totalInitial };
+    }
+    if (selectedAccount === "all") {
+      // Suma histórica de todas las cuentas
       const totalBalance = auditData.accounts.reduce(
-        (sum, a) => sum + a.balance,
+        (sum, a) => sum + (a.balance || 0),
         0,
       );
       const totalInitial = auditData.accounts.reduce(
-        (sum, a) => sum + a.balanceInicial,
+        (sum, a) => sum + (a.balanceInicial || 0),
         0,
       );
       return { realBalance: totalBalance, realInitialBalance: totalInitial };
@@ -232,7 +270,7 @@ export default function Home() {
       realBalance: cuenta?.balance ?? 0,
       realInitialBalance: cuenta?.balanceInicial ?? 0,
     };
-  }, [auditData, selectedAccount]);
+  }, [auditData, selectedAccount, activeAccounts]);
 
   // ─── Convertir a ParsedTrade para gráficos / KPIs ─────────────────
   const parsedTrades: ParsedTrade[] = React.useMemo(
@@ -241,12 +279,11 @@ export default function Home() {
   );
 
   // ─── Balance inicial configurable ─────────────────────────────────
-  // Ya no se usa para los KPIs (proviene del JSON), solo para el equity chart si se desea ajustar
   const [initialBalance, setInitialBalance] = React.useState<number>(50000);
 
   // ─── Tab activo ───────────────────────────────────────────────────
   const [activeTab, setActiveTab] = React.useState<
-    "dashboard" | "review" | "calendar" | "table"
+    "dashboard" | "review" | "calendar" | "table" | "accounts"
   >("dashboard");
 
   // ─── Verificar sesión al montar + escuchar cambios ────────────────
@@ -415,13 +452,26 @@ export default function Home() {
               onChange={(e) => setSelectedAccount(e.target.value)}
               className="w-full text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
             >
-            {accountOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt === "all"
-                    ? "📊 Todas las cuentas"
-                    : (auditData.accountMap[opt]?.nombre ?? opt)}
-                </option>
-              ))}
+              <option value="active">🟢 Cuentas Activas ({activeAccounts.length})</option>
+              <option value="all">📋 Todas (Histórico Global)</option>
+              {activeAccounts.length > 0 && (
+                <optgroup label="── Cuentas Activas ──">
+                  {activeAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      · {a.nombre || a.alias || a.id}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {inactiveAccounts.length > 0 && (
+                <optgroup label="── Archivadas / Quemadas ──">
+                  {inactiveAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.estado === "cancelada" ? "🚫" : "🔥"} {a.nombre || a.alias || a.id} ({a.estado || "quemada"})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             <div className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">
               {filteredOps.length} operaciones
@@ -498,6 +548,12 @@ export default function Home() {
                   Icon: FileSpreadsheet,
                   color: "text-emerald-500",
                 },
+                {
+                  id: "accounts",
+                  label: "Historial de Cuentas",
+                  Icon: ShieldAlert,
+                  color: "text-rose-500",
+                },
               ] as const
             ).map(({ id, label, Icon, color }) => (
               <button
@@ -516,6 +572,11 @@ export default function Home() {
                 {id === "table" && parsedTrades.length > 0 && (
                   <span className="ml-auto px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                     {parsedTrades.length}
+                  </span>
+                )}
+                {id === "accounts" && inactiveAccounts.length > 0 && (
+                  <span className="ml-auto px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                    {inactiveAccounts.length}
                   </span>
                 )}
               </button>
@@ -679,13 +740,26 @@ export default function Home() {
               onChange={(e) => setSelectedAccount(e.target.value)}
               className="md:hidden text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
-              {accountOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt === "all"
-                    ? "Todas"
-                    : (auditData.accountMap[opt]?.nombre ?? opt)}
-                </option>
-              ))}
+              <option value="active">🟢 Activas ({activeAccounts.length})</option>
+              <option value="all">📋 Todas (Histórico)</option>
+              {activeAccounts.length > 0 && (
+                <optgroup label="── Activas ──">
+                  {activeAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      · {a.nombre || a.alias || a.id}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {inactiveAccounts.length > 0 && (
+                <optgroup label="── Quemadas / Canceladas ──">
+                  {inactiveAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.estado === "cancelada" ? "🚫" : "🔥"} {a.nombre || a.alias || a.id}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             <ThemeToggle />
             <button
@@ -710,7 +784,7 @@ export default function Home() {
 
           {/* Mobile tabs */}
           <div className="flex md:hidden border-b border-slate-200 dark:border-slate-800 pb-2 gap-4 text-xs font-semibold overflow-x-auto">
-            {(["dashboard", "review", "calendar", "table"] as const).map(
+            {(["dashboard", "review", "calendar", "table", "accounts"] as const).map(
               (tab) => (
                 <button
                   key={tab}
@@ -725,7 +799,9 @@ export default function Home() {
                     ? "Resumen"
                     : tab === "table"
                       ? `Diario (${parsedTrades.length})`
-                      : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      : tab === "accounts"
+                        ? `Cuentas (${inactiveAccounts.length})`
+                        : tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
               ),
             )}
@@ -936,12 +1012,44 @@ export default function Home() {
                 </h2>
                 <button
                   onClick={() => setActiveTab("dashboard")}
-                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
                 >
                   Volver a Dashboard
                 </button>
               </div>
               <TradesTable trades={parsedTrades} />
+            </section>
+          )}
+
+          {/* ─── TAB: ACCOUNTS ─── */}
+          {activeTab === "accounts" && (
+            <section className="space-y-4 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <ShieldAlert className="h-5 w-5 text-rose-500" />
+                    <span>Historial & Gestión de Cuentas</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Gestiona cuentas activas, audita cuentas quemadas o canceladas y aísla sus balances del dashboard.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab("dashboard")}
+                  className="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                >
+                  Volver a Dashboard
+                </button>
+              </div>
+              <AccountsManager
+                accounts={auditData.accounts}
+                operations={auditData.operations}
+                userId={user.id}
+                onAccountStatusChanged={async () => {
+                  const refreshed = await loadUserDataFromSupabase(user.id);
+                  setAuditData(refreshed);
+                }}
+              />
             </section>
           )}
         </main>

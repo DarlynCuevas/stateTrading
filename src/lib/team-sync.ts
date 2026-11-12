@@ -84,7 +84,10 @@ export async function loadUserDataFromSupabase(userId?: string) {
         drawdownTipo: a.drawdown_tipo,
         drawdownMax: a.drawdown_max ? Number(a.drawdown_max) : undefined,
       },
-      activa: a.activa,
+      activa: a.activa ?? true,
+      estado: a.estado || (a.activa === false ? "quemada" : "activa"),
+      fechaBaja: a.fecha_baja,
+      motivoBaja: a.motivo_baja,
     }));
 
     // Normalizar Operaciones
@@ -241,5 +244,49 @@ export async function syncLocalStateToSupabase(): Promise<{ success: boolean; me
   } catch (err: any) {
     console.error("[StateTrading] Error al sincronizar con Supabase:", err);
     return { success: false, message: err?.message || "Error al sincronizar" };
+  }
+}
+
+/**
+ * Actualiza el estado de una cuenta (activa, quemada, cancelada, superada)
+ */
+export async function updateAccountStatus(
+  accountId: string,
+  userId: string,
+  status: "activa" | "quemada" | "cancelada" | "superada",
+  motivo?: string
+) {
+  const supabase = createClient();
+  const isActiva = status === "activa";
+  const now = new Date().toISOString();
+
+  try {
+    const { error } = await supabase
+      .from("trading_accounts")
+      .update({
+        activa: isActiva,
+        estado: status,
+        fecha_baja: isActiva ? null : now,
+        motivo_baja: motivo || null,
+        updated_at: now,
+      })
+      .eq("id", accountId)
+      .eq("user_id", userId);
+
+    if (error) {
+      // Fallback si las columnas adicionales no existen en el esquema
+      await supabase
+        .from("trading_accounts")
+        .update({
+          activa: isActiva,
+          updated_at: now,
+        })
+        .eq("id", accountId)
+        .eq("user_id", userId);
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.error("[StateTrading] Error al cambiar estado de cuenta:", err);
+    return { success: false, error: err.message };
   }
 }

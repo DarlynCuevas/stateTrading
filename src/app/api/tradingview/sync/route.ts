@@ -109,7 +109,8 @@ export async function POST(req: Request) {
         distancia_drawdown: distanciaDd,
         drawdown_tipo: existingAcc?.drawdown_tipo || "trailing",
         drawdown_max: existingAcc?.drawdown_max || (esFondeada ? 2500 : 1500),
-        activa: true,
+        activa: existingAcc?.activa != null ? existingAcc.activa : true,
+        estado: existingAcc?.estado || (existingAcc?.activa === false ? "quemada" : "activa"),
         updated_at: new Date().toISOString(),
       });
 
