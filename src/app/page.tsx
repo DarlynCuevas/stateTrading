@@ -623,13 +623,14 @@ export default function Home() {
               </select>
             </div>
 
-            {/* Botón Sincronizar directo desde TradingView Desktop */}
+            {/* Botones de Sincronización y Descarga */}
             {selectedTraderId === "me" && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
+                {/* 1. Botón para sincronizar en vivo cuando el archivo ya está abierto */}
                 <button
                   onClick={handleSyncTradingViewDesktop}
                   disabled={syncingTV}
-                  title="Sincronizar y actualizar las órdenes en vivo"
+                  title="Sincronizar y actualizar las órdenes en vivo (cuando el sincronizador ya está abierto en tu ordenador)"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition-colors cursor-pointer shadow-sm shadow-emerald-500/20 disabled:opacity-60"
                 >
                   {syncingTV ? (
@@ -640,12 +641,15 @@ export default function Home() {
                   <span>{syncingTV ? "Actualizando..." : "Sincronizar TradingView"}</span>
                 </button>
 
+                {/* 2. Botón para usuarios primerizos que necesitan descargar el archivo */}
                 <button
                   onClick={() => setShowSyncModal(true)}
-                  title="Descargar sincronizador para Windows / Mac o ver instrucciones"
-                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-emerald-500 transition-colors cursor-pointer"
+                  title="Descargar el sincronizador de 1 clic para tu ordenador (Windows o Mac)"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 text-xs font-semibold transition-colors cursor-pointer shadow-sm"
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  <Download className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="hidden sm:inline">Descargar Archivo</span>
+                  <span className="sm:hidden">Descargar</span>
                 </button>
               </div>
             )}
