@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { X, RefreshCw, Terminal, CheckCircle2, Monitor, ShieldCheck, ArrowRight } from "lucide-react";
+import { X, RefreshCw, Terminal, CheckCircle2, Monitor, ShieldCheck, ArrowRight, Download } from "lucide-react";
 
 interface SyncDesktopModalProps {
   isOpen: boolean;
@@ -70,34 +70,53 @@ export function SyncDesktopModal({
           </h3>
 
           <div className="space-y-2.5">
+            {/* Opción Windows */}
+            <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-blue-500/50 transition-colors">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-semibold text-xs flex items-center gap-1.5 text-slate-850 dark:text-slate-100">
+                  🪟 En Windows:
+                </span>
+                <a
+                  href="/Sincronizar-Trading-Windows.bat"
+                  download="Sincronizar-Trading-Windows.bat"
+                  className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                >
+                  <Download className="h-3 w-3" /> Descargar .bat
+                </a>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
+                Haz doble clic sobre <code className="font-mono text-blue-600 dark:text-blue-400 font-semibold">Sincronizar-Trading-Windows.bat</code>. Si TradingView está cerrado, lo abrirá automáticamente.
+              </p>
+            </div>
+
             {/* Opción Mac */}
             <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-emerald-500/50 transition-colors">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="font-semibold text-xs flex items-center gap-1.5 text-slate-850 dark:text-slate-100">
                   🍏 En macOS:
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-medium">
-                  scripts/Sincronizar-Trading-Mac.command
-                </span>
+                <a
+                  href="/Sincronizar-Trading-Mac.command"
+                  download="Sincronizar-Trading-Mac.command"
+                  className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
+                >
+                  <Download className="h-3 w-3" /> Descargar .command
+                </a>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
-                Haz doble clic sobre el archivo <code className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">Sincronizar-Trading-Mac.command</code> en la carpeta de tu proyecto.
+                Haz doble clic sobre <code className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">Sincronizar-Trading-Mac.command</code>.
               </p>
             </div>
 
-            {/* Opción Windows */}
-            <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-emerald-500/50 transition-colors">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="font-semibold text-xs flex items-center gap-1.5 text-slate-850 dark:text-slate-100">
-                  🪟 En Windows:
-                </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-medium">
-                  scripts/Sincronizar-Trading-Windows.bat
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-normal">
-                Haz doble clic sobre el archivo <code className="font-mono text-blue-600 dark:text-blue-400 font-semibold">Sincronizar-Trading-Windows.bat</code>.
-              </p>
+            {/* Pack Completo ZIP */}
+            <div className="text-center pt-1">
+              <a
+                href="/StateTrading-Sync.zip"
+                download="StateTrading-Sync.zip"
+                className="inline-flex items-center gap-1.5 text-[11px] text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 underline font-medium"
+              >
+                <Download className="h-3.5 w-3.5" /> Descargar pack completo para el equipo (StateTrading-Sync.zip)
+              </a>
             </div>
           </div>
         </div>
