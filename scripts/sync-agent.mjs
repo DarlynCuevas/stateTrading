@@ -194,8 +194,8 @@ async function extractTradingViewData(port = 9222) {
             if (conn && conn.setCurrentAccount) {
               await conn.setCurrentAccount(acc.id);
             }
-            // Esperar 1.5s para que TradingView cargue saldos y ejecuciones de esta cuenta
-            await new Promise(r => setTimeout(r, 1500));
+            // Esperar 2.5s para que TradingView cargue saldos y ejecuciones de esta cuenta
+            await new Promise(r => setTimeout(r, 2500));
 
             // Leer saldo (netLiq)
             let balance = 0;
@@ -281,7 +281,7 @@ async function extractTradingViewData(port = 9222) {
     setTimeout(() => {
       try { ws.close(); } catch {}
       reject(new Error("Tiempo de espera agotado al leer TradingView Desktop"));
-    }, 10000);
+    }, 30000);
   });
 }
 

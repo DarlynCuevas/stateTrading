@@ -33,7 +33,9 @@ import {
   Wallet,
   Users,
   CloudUpload,
+  RefreshCw,
 } from "lucide-react";
+import { SyncDesktopModal } from "@/components/sync-desktop-modal";
 
 // ─── Convierte una Operation del JSON a ParsedTrade para los gráficos/stats ───
 function operationToParsedTrade(op: Operation): ParsedTrade {
@@ -79,20 +81,48 @@ export default function Home() {
   const [syncing, setSyncing] = React.useState(false);
   const [syncStatus, setSyncStatus] = React.useState<string | null>(null);
   const [syncingTV, setSyncingTV] = React.useState(false);
+  const [showSyncModal, setShowSyncModal] = React.useState(false);
+
+  const handleRefreshData = async () => {
+    if (!user?.id) return;
+    setSyncingTV(true);
+    setSyncStatus("Actualizando...");
+    try {
+      const refreshed = await loadUserDataFromSupabase(user.id);
+      setAuditData(refreshed);
+      setSyncStatus("✓ Datos actualizados");
+    } catch (err: any) {
+      setSyncStatus(`Error: ${err.message}`);
+    } finally {
+      setSyncingTV(false);
+      setTimeout(() => setSyncStatus(null), 3000);
+    }
+  };
 
   const handleSyncTradingViewDesktop = async () => {
     setSyncingTV(true);
     setSyncStatus(null);
     try {
-      const res = await fetch("/api/tradingview/sync", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        throw new Error(data.error || "Error al sincronizar con TradingView Desktop");
+      const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+
+      if (isLocal) {
+        const res = await fetch("/api/tradingview/sync", { method: "POST" });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          throw new Error(data.error || "Error al sincronizar con TradingView Desktop");
+        }
+        setSyncStatus(data.message);
+      } else {
+        // En la web desplegada en Vercel, abrimos el modal interactivo y refrescamos datos de Supabase
+        setShowSyncModal(true);
       }
-      setSyncStatus(data.message);
+
       if (user?.id) {
         const refreshed = await loadUserDataFromSupabase(user.id);
         setAuditData(refreshed);
+        if (!isLocal) {
+          setSyncStatus("✓ Datos actualizados desde la nube");
+        }
       }
     } catch (err: any) {
       setSyncStatus(`Error: ${err.message}`);
@@ -545,19 +575,30 @@ export default function Home() {
 
             {/* Botón Sincronizar directo desde TradingView Desktop */}
             {selectedTraderId === "me" && (
-              <button
-                onClick={handleSyncTradingViewDesktop}
-                disabled={syncingTV}
-                title="Lee directamente las órdenes y posiciones de tu app de TradingView Desktop abierta"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition-colors cursor-pointer shadow-sm shadow-emerald-500/20 disabled:opacity-60"
-              >
-                {syncingTV ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <TrendingUp className="h-3.5 w-3.5" />
-                )}
-                <span>{syncingTV ? "Leyendo TradingView..." : "Sincronizar TradingView"}</span>
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={handleSyncTradingViewDesktop}
+                  disabled={syncingTV}
+                  title="Sincronizar tus órdenes desde TradingView Desktop"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition-colors cursor-pointer shadow-sm shadow-emerald-500/20 disabled:opacity-60"
+                >
+                  {syncingTV ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <TrendingUp className="h-3.5 w-3.5" />
+                  )}
+                  <span>{syncingTV ? "Actualizando..." : "Sincronizar TradingView"}</span>
+                </button>
+
+                <button
+                  onClick={handleRefreshData}
+                  disabled={syncingTV}
+                  title="Refrescar datos en vivo desde la base de datos"
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${syncingTV ? "animate-spin" : ""}`} />
+                </button>
+              </div>
             )}
 
             {syncStatus && (
@@ -565,6 +606,13 @@ export default function Home() {
                 {syncStatus}
               </span>
             )}
+
+            <SyncDesktopModal
+              isOpen={showSyncModal}
+              onClose={() => setShowSyncModal(false)}
+              onRefresh={handleRefreshData}
+              refreshing={syncingTV}
+            />
 
             {/* Selector móvil de cuenta */}
             <select

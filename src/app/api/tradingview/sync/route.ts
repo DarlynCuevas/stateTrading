@@ -1,20 +1,32 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient as createServerClient } from "@/lib/supabase/server";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { extractTradingViewDesktopData } from "@/lib/tradingview/desktop-reader";
 
 export async function POST(req: Request) {
   try {
-    const supabase = await createClient();
-
     // 1. Autenticación: vía Bearer token (desde script local) o vía cookie de sesión (desde la web)
     const authHeader = req.headers.get("authorization");
     let user = null;
+    let supabase: any = null;
 
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "").trim();
-      const { data: { user: u } } = await supabase.auth.getUser(token);
+      supabase = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          global: {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        }
+      );
+      const { data: { user: u } } = await supabase.auth.getUser();
       user = u;
     } else {
+      supabase = await createServerClient();
       const { data: { user: u } } = await supabase.auth.getUser();
       user = u;
     }
@@ -106,7 +118,7 @@ export async function POST(req: Request) {
       // 3. Guardar las operaciones en Supabase
       if (accData.trades && Array.isArray(accData.trades) && accData.trades.length > 0) {
         for (const t of accData.trades) {
-          await supabase.from("trades").upsert({
+          const { error: tErr } = await supabase.from("trades").upsert({
             id: t.id,
             account_id: accountId,
             user_id: user.id,
@@ -123,6 +135,9 @@ export async function POST(req: Request) {
             net_pnl: t.netPnl,
             resultado: t.resultado,
           });
+          if (tErr) {
+            console.error(`[Trade Upsert Error for ${t.id}]:`, tErr);
+          }
           totalGuardadas++;
         }
       } else if (accData.orders && Array.isArray(accData.orders)) {
