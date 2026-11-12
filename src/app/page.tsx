@@ -34,8 +34,10 @@ import {
   Users,
   CloudUpload,
   RefreshCw,
+  KeyRound,
 } from "lucide-react";
 import { SyncDesktopModal } from "@/components/sync-desktop-modal";
+import { ChangePasswordModal } from "@/components/change-password-modal";
 
 // ─── Convierte una Operation del JSON a ParsedTrade para los gráficos/stats ───
 function operationToParsedTrade(op: Operation): ParsedTrade {
@@ -82,6 +84,7 @@ export default function Home() {
   const [syncStatus, setSyncStatus] = React.useState<string | null>(null);
   const [syncingTV, setSyncingTV] = React.useState(false);
   const [showSyncModal, setShowSyncModal] = React.useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = React.useState(false);
 
   const handleRefreshData = async () => {
     if (!user?.id) return;
@@ -254,8 +257,11 @@ export default function Home() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+      if (event === "PASSWORD_RECOVERY") {
+        setShowChangePasswordModal(true);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -510,21 +516,31 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Usuario + logout */}
-          <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
+          {/* Usuario + contraseña + logout */}
+          <div className="px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-2">
             <div
-              className="text-[11px] text-slate-500 dark:text-slate-400 truncate mb-1.5"
+              className="text-[11px] text-slate-500 dark:text-slate-400 truncate"
               title={user.email}
             >
               {user.email}
             </div>
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-[11px] font-medium text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-colors cursor-pointer"
-            >
-              <LogOut className="h-3 w-3" />
-              Cerrar Sesión
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setShowChangePasswordModal(true)}
+                title="Cambiar contraseña de tu cuenta"
+                className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-md text-[11px] font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer"
+              >
+                <KeyRound className="h-3 w-3 text-emerald-500" />
+                <span>Contraseña</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                title="Cerrar Sesión"
+                className="flex items-center justify-center p-1.5 rounded-md text-[11px] font-medium text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-colors cursor-pointer"
+              >
+                <LogOut className="h-3 w-3" />
+              </button>
+            </div>
           </div>
         </div>
       </aside>
@@ -614,6 +630,12 @@ export default function Home() {
               refreshing={syncingTV}
             />
 
+            <ChangePasswordModal
+              isOpen={showChangePasswordModal}
+              onClose={() => setShowChangePasswordModal(false)}
+              userEmail={user?.email}
+            />
+
             {/* Selector móvil de cuenta */}
             <select
               value={selectedAccount}
@@ -629,6 +651,13 @@ export default function Home() {
               ))}
             </select>
             <ThemeToggle />
+            <button
+              onClick={() => setShowChangePasswordModal(true)}
+              className="md:hidden flex items-center justify-center h-8 w-8 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              title="Cambiar Contraseña"
+            >
+              <KeyRound className="h-4 w-4" />
+            </button>
             <button
               onClick={handleLogout}
               className="md:hidden flex items-center justify-center h-8 w-8 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
