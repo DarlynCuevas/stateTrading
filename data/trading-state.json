@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "actualizadoEn": "2026-11-12T14:49:19.072Z",
+  "actualizadoEn": "2026-11-12T15:04:11.985Z",
   "zonaHoraria": "Europe/Madrid",
   "moneda": "USD",
   "cuentas": [
@@ -68,10 +68,10 @@
     {
       "cuentaId": "PAAPEX6339420000001",
       "fecha": "2026-11-12",
-      "saldo": 49153.45,
-      "pnlDia": 0,
+      "saldo": 49054.41,
+      "pnlDia": -99.04,
       "nivelLiquidacion": 48623.36,
-      "distanciaDrawdown": 530.09
+      "distanciaDrawdown": 431.05
     },
     {
       "cuentaId": "PAAPEX6339420000002",
@@ -231,7 +231,7 @@
       "entryPrice": 28079.25,
       "quantity": 1,
       "plan": {
-        "sl": 28193,
+        "sl": 28183,
         "tp": 28698.25,
         "valorPunto": 2,
         "riesgoUsd": 133

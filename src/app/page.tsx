@@ -128,11 +128,6 @@ export default function Home() {
     async function initAndSync() {
       setIsLoadingData(true);
       try {
-        // Auto-sincronizar el archivo JSON a Supabase
-        await syncLocalStateToSupabase();
-
-        if (cancelled) return;
-
         // Cargar los miembros del equipo
         const members = await getTeamMembers();
         if (!cancelled) setTeamMembers(members);

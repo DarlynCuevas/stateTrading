@@ -68,10 +68,10 @@
     {
       "cuentaId": "PAAPEX6339420000001",
       "fecha": "2026-11-12",
-      "saldo": 49153.45,
-      "pnlDia": 0,
+      "saldo": 49054.41,
+      "pnlDia": -99.04,
       "nivelLiquidacion": 48623.36,
-      "distanciaDrawdown": 530.09
+      "distanciaDrawdown": 431.05
     },
     {
       "cuentaId": "PAAPEX6339420000002",

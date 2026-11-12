@@ -166,8 +166,21 @@ export async function syncLocalStateToSupabase(): Promise<{ success: boolean; me
 
     const idsCuentasUsuario = new Set(cuentasDelUsuario.map((c) => c.id));
 
-    // Subir Cuentas del usuario
+    // Obtener cuentas existentes en Supabase para no sobreescribir el saldo real en vivo
+    const { data: existingAccounts } = await supabase
+      .from("trading_accounts")
+      .select("id, saldo_actual, nivel_liquidacion, distancia_drawdown")
+      .eq("user_id", user.id);
+
+    const existingMap = new Map((existingAccounts || []).map((a: any) => [a.id, a]));
+
+    // Subir Cuentas del usuario (preservando el saldo en vivo si ya existen)
     for (const cuenta of cuentasDelUsuario) {
+      const existing = existingMap.get(cuenta.id);
+      const saldoActual = existing?.saldo_actual != null ? existing.saldo_actual : cuenta.balance;
+      const nivelLiq = existing?.nivel_liquidacion != null ? existing.nivel_liquidacion : cuenta.nivelLiquidacion;
+      const distanciaDd = existing?.distancia_drawdown != null ? existing.distancia_drawdown : cuenta.distanciaDrawdown;
+
       await supabase.from("trading_accounts").upsert({
         id: cuenta.id,
         user_id: user.id,
@@ -175,9 +188,9 @@ export async function syncLocalStateToSupabase(): Promise<{ success: boolean; me
         broker: cuenta.broker,
         tipo: cuenta.tipo,
         saldo_inicial: cuenta.balanceInicial,
-        saldo_actual: cuenta.balance,
-        nivel_liquidacion: cuenta.nivelLiquidacion,
-        distancia_drawdown: cuenta.distanciaDrawdown,
+        saldo_actual: saldoActual,
+        nivel_liquidacion: nivelLiq,
+        distancia_drawdown: distanciaDd,
         pnl_dia: cuenta.pnlDia,
         drawdown_tipo: cuenta.reglas?.drawdownTipo,
         drawdown_max: cuenta.reglas?.drawdownMax,

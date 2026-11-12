@@ -67,16 +67,33 @@ export async function POST(req: Request) {
     const saldoInicial = esFondeada ? 50000 : 25000;
     const saldoActual = tvData.balance && tvData.balance > 0 ? tvData.balance : saldoInicial;
 
-    // Asegurar la cuenta en Supabase
+    // Obtener cuenta existente para preservar nivel de liquidación y drawdown
+    const { data: existingAcc } = await supabase
+      .from("trading_accounts")
+      .select("*")
+      .eq("id", accountId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const nivelLiq = existingAcc?.nivel_liquidacion != null 
+      ? Number(existingAcc.nivel_liquidacion)
+      : (saldoInicial - (esFondeada ? 2500 : 1500));
+    const distanciaDd = Number((saldoActual - nivelLiq).toFixed(2));
+
+    // Asegurar la cuenta en Supabase con saldo y distancia de drawdown actualizados
     await supabase.from("trading_accounts").upsert({
       id: accountId,
       user_id: user.id,
-      alias: alias,
-      broker: "Apex / TradingView",
+      alias: existingAcc?.alias || alias,
+      broker: existingAcc?.broker || "Apex / Tradovate",
       tipo: esFondeada ? "fondeada" : "evaluacion",
       tamano: saldoInicial,
       saldo_inicial: saldoInicial,
       saldo_actual: saldoActual,
+      nivel_liquidacion: nivelLiq,
+      distancia_drawdown: distanciaDd,
+      drawdown_tipo: existingAcc?.drawdown_tipo || "trailing",
+      drawdown_max: existingAcc?.drawdown_max || (esFondeada ? 2500 : 1500),
       activa: true,
       updated_at: new Date().toISOString(),
     });
