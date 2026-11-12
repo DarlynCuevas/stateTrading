@@ -90,13 +90,21 @@ export async function POST(req: Request) {
         .eq("user_id", user.id)
         .maybeSingle();
 
+      // Nivel de liquidación y colchón de drawdown
       const nivelLiq = existingAcc?.nivel_liquidacion != null 
         ? Number(existingAcc.nivel_liquidacion)
         : (saldoInicial - (esFondeada ? 2500 : 1500));
       const distanciaDd = Number((saldoActual - nivelLiq).toFixed(2));
 
+      // Auto-detección de cuenta quemada por violación de Drawdown
+      const drawdownBreached = distanciaDd <= 0 || (saldoActual < nivelLiq);
+      const isActiva = existingAcc?.activa != null 
+        ? (drawdownBreached ? false : existingAcc.activa)
+        : !drawdownBreached;
+
       // Asegurar la cuenta en Supabase con saldo y distancia de drawdown actualizados
-      await supabase.from("trading_accounts").upsert({
+      // IMPORTANTE: No incluir 'estado' ya que la columna no existe en el esquema Postgres de trading_accounts.
+      const { error: accErr } = await supabase.from("trading_accounts").upsert({
         id: accountId,
         user_id: user.id,
         alias: existingAcc?.alias || alias,
@@ -109,10 +117,13 @@ export async function POST(req: Request) {
         distancia_drawdown: distanciaDd,
         drawdown_tipo: existingAcc?.drawdown_tipo || "trailing",
         drawdown_max: existingAcc?.drawdown_max || (esFondeada ? 2500 : 1500),
-        activa: existingAcc?.activa != null ? existingAcc.activa : true,
-        estado: existingAcc?.estado || (existingAcc?.activa === false ? "quemada" : "activa"),
+        activa: isActiva,
         updated_at: new Date().toISOString(),
       });
+
+      if (accErr) {
+        console.error(`[Error upserting account ${accountId}]:`, accErr);
+      }
 
       cuentasProcesadas.push(`${alias}: $${saldoActual.toLocaleString("es-ES")}`);
 

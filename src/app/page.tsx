@@ -208,21 +208,31 @@ export default function Home() {
   const [selectedAccount, setSelectedAccount] = React.useState<string>("active");
 
   // Cuentas activas vs inactivas (quemadas o canceladas)
+  const isAccountBurned = React.useCallback((a: Account) => {
+    if (a.activa === false || a.estado === "quemada" || a.estado === "cancelada") {
+      return true;
+    }
+    // Auto-detectar si el saldo o colchón de drawdown ha perforado el límite de liquidación
+    if (a.distanciaDrawdown != null && a.distanciaDrawdown <= 0) {
+      return true;
+    }
+    if (a.nivelLiquidacion != null && a.balance != null && a.balance > 0 && a.balance <= a.nivelLiquidacion) {
+      return true;
+    }
+    return false;
+  }, []);
+
   const activeAccounts = React.useMemo(() => {
-    return auditData.accounts.filter(
-      (a) => a.activa !== false && a.estado !== "quemada" && a.estado !== "cancelada"
-    );
-  }, [auditData.accounts]);
+    return auditData.accounts.filter((a) => !isAccountBurned(a));
+  }, [auditData.accounts, isAccountBurned]);
 
   const activeAccountIds = React.useMemo(() => {
     return activeAccounts.map((a) => a.id);
   }, [activeAccounts]);
 
   const inactiveAccounts = React.useMemo(() => {
-    return auditData.accounts.filter(
-      (a) => a.activa === false || a.estado === "quemada" || a.estado === "cancelada"
-    );
-  }, [auditData.accounts]);
+    return auditData.accounts.filter((a) => isAccountBurned(a));
+  }, [auditData.accounts, isAccountBurned]);
 
   // Operaciones filtradas según la cuenta seleccionada
   const filteredOps: Operation[] = React.useMemo(() => {

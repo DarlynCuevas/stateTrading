@@ -34,12 +34,24 @@ export function AccountsManager({
   const [filter, setFilter] = React.useState<"all" | "active" | "burned">("active");
   const [loadingAccId, setLoadingAccId] = React.useState<string | null>(null);
 
+  // Helper para detectar cuentas quemadas (manualmente o por límite de drawdown)
+  const isAccountBurned = React.useCallback((a: Account) => {
+    if (a.activa === false || a.estado === "quemada" || a.estado === "cancelada") {
+      return true;
+    }
+    if (a.distanciaDrawdown != null && a.distanciaDrawdown <= 0) {
+      return true;
+    }
+    if (a.nivelLiquidacion != null && a.balance != null && a.balance > 0 && a.balance <= a.nivelLiquidacion) {
+      return true;
+    }
+    return false;
+  }, []);
+
   // Estadísticas globales de cuentas
-  const activeAccounts = accounts.filter(
-    (a) => a.activa !== false && a.estado !== "quemada" && a.estado !== "cancelada"
-  );
+  const activeAccounts = accounts.filter((a) => !isAccountBurned(a));
   const burnedAccounts = accounts.filter(
-    (a) => a.estado === "quemada" || (a.activa === false && a.estado !== "cancelada")
+    (a) => a.estado === "quemada" || (isAccountBurned(a) && a.estado !== "cancelada")
   );
   const canceledAccounts = accounts.filter((a) => a.estado === "cancelada");
   const passedAccounts = accounts.filter((a) => a.estado === "superada");
@@ -49,7 +61,7 @@ export function AccountsManager({
 
   // Cuentas según el filtro
   const displayedAccounts = accounts.filter((a) => {
-    const isActiva = a.activa !== false && a.estado !== "quemada" && a.estado !== "cancelada";
+    const isActiva = !isAccountBurned(a);
     if (filter === "active") return isActiva;
     if (filter === "burned") return !isActiva;
     return true;
@@ -171,7 +183,7 @@ export function AccountsManager({
       {/* Accounts List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {displayedAccounts.map((acc) => {
-          const isActiva = acc.activa !== false && acc.estado !== "quemada" && acc.estado !== "cancelada";
+          const isActiva = !isAccountBurned(acc);
           const opsCuenta = operations.filter((op) => op.cuentaId === acc.id);
           const pnlTotal = opsCuenta.reduce((sum, op) => sum + (op.netPnl ?? op.pnl ?? 0), 0);
           const esFondeada = acc.id.toLowerCase().includes("paapex") || acc.tipo === "fondeada";

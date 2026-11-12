@@ -17,7 +17,7 @@ const CONFIG_FILE = path.join(__dirname, ".sync-config.json");
 
 const SUPABASE_URL = "https://uvhtbmnrxvjgklbqsdwv.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_2ekGy6sfz9zwO4MqtQMAWg_50cQravb";
-const DEFAULT_APP_URL = "http://localhost:3000";
+const DEFAULT_APP_URL = "https://state-trading-lake.vercel.app";
 
 function askQuestion(query) {
   const rl = readline.createInterface({
@@ -46,12 +46,8 @@ async function loadOrPromptConfig() {
   console.log("       StateTrading · Sincronizador de Escritorio       ");
   console.log("========================================================\n");
 
-  if (!config.appUrl) {
-    console.log("Configuración inicial (solo se pide la primera vez):");
-    const inputUrl = await askQuestion(
-      `URL de la aplicación web [Enter para ${DEFAULT_APP_URL}]: `
-    );
-    config.appUrl = inputUrl || DEFAULT_APP_URL;
+  if (!config.appUrl || config.appUrl.includes("localhost:3000") || config.appUrl.includes("127.0.0.1:3000")) {
+    config.appUrl = DEFAULT_APP_URL;
   }
 
   if (!config.email) {
