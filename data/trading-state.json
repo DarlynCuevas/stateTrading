@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "actualizadoEn": "2026-11-12T16:03:48.124Z",
+  "actualizadoEn": "2026-11-12T17:20:07.041Z",
   "zonaHoraria": "Europe/Madrid",
   "moneda": "USD",
   "cuentas": [
@@ -294,44 +294,54 @@
       "leccion": "SL en el borde del desequilibrio de 1m 28049.25-28065.5 (BOS del LB 28013.75) y bajo mínimos iguales 28055-28058: la vela de las 15:30 lo llenó entero (28044.25) y luego subió 340 pts. Entrada en la zona que el auditor descartó, posición abierta en la apertura de NY y riesgo ~98 $ (>15 % del colchón de 530 $).",
       "captura": null,
       "pendiente": "comisión; confirmar si también hubo operación en …002"
-    }
-  ],
-  "ordenesAbiertas": [
+    },
     {
-      "id": "R8",
+      "id": "R9",
       "cuentaId": "PAAPEX6339420000001",
+      "real": true,
       "symbol": "MNQ",
       "contrato": "MNQZ6",
       "type": "COMPRA",
-      "tipoOrden": "limitada",
-      "colocadaEn": "2026-11-12T16:28:01+01:00",
-      "entryPrice": 28231.25,
+      "openTime": "2026-11-12T18:07:17+01:00",
+      "closeTime": "2026-11-12T18:18:03+01:00",
+      "entryPrice": 28488.5,
+      "exitPrice": 28460,
       "quantity": 1,
+      "pnl": -57,
+      "commission": null,
+      "netPnl": null,
       "plan": {
-        "sl": 28191.5,
-        "tp": 28403,
+        "sl": null,
+        "tp": null,
         "valorPunto": 2,
-        "riesgoUsd": 79.5
+        "riesgoUsd": null
       },
-      "auditor": "Variante B aprobada con ajustes (28180 / SL 28140 / TP 28388); el usuario elige entrar en el LB 28202",
-      "notas": "Entrada en el primer mínimo tras el LB 28202.25, después de barrer los mínimos iguales 28250-28258. SL 28191.5: dentro del desequilibrio de 1m 28160-28193.75 (riesgo asumido). TP 28403, encima de 28402.75: valorar 28388.",
-      "cancelarSi": [
-        "rompe 28392 / 28402.75 sin llenarse",
-        "vela de 5m cierra bajo 28160 antes del llenado",
-        "19:30 sin llenarse"
-      ]
+      "rMultiple": null,
+      "resultado": "Cierre manual (a mercado) en pérdida",
+      "sesion": "NY tarde",
+      "setup": "LB 28452 (barrido 17:45 + BOS 17:47); entrada en el nivel del BOS 28488.5",
+      "auditor": "DESCARTAR 28480/28440; aprobaba solo límite 28405 / SL 28368 en …002",
+      "errores": [
+        "E9",
+        "E8"
+      ],
+      "aciertos": [],
+      "leccion": "Entrada en el borde superior del desequilibrio de 1m 28473-28492.5, por encima de la zona aprobada (28405), en la …001 (ya con −98 $ hoy) en vez de la …002. Cerrada a mano 10 min después.",
+      "captura": null,
+      "pendiente": "SL y TP que tenía puestos; confirmar si el cierre fue manual"
     }
   ],
+  "ordenesAbiertas": [],
   "resumenesSemanales": [
     {
       "periodId": "2026-W46",
       "label": "Semana del 9 al 13 nov 2026",
       "estado": "provisional",
-      "operaciones": 6,
+      "operaciones": 7,
       "ganadas": 1,
       "perdidas": 5,
-      "breakeven": 0,
-      "winRate": 16.7,
+      "breakeven": 1,
+      "winRate": 14.3,
       "resultadoR": 1.15,
       "resultadoUsd": 699.08,
       "resultadoUsdCompleto": false,
@@ -340,8 +350,8 @@
         "E4": 4,
         "E2": 1,
         "E3": 3,
-        "E9": 3,
-        "E8": 2
+        "E9": 4,
+        "E8": 3
       },
       "aciertos": {
         "A1": 1,
@@ -440,6 +450,33 @@
       "notas": "Abierta en la ventana del dato (E4) y sin auditor (E9). Riesgo inicial 133 $ (~35 % del colchón, E8). SL inicial 28012.75, bajo el extremo del LB 28013.75: sobrevivió al barrido de 28044.25 de las 15:30. TP 28698.25 = máximo de 1H sin tomar del 11 nov (28697.25): es liquidez real, NO es E7. SL a breakeven tras romper 28165.",
       "estado": "ejecutada",
       "cerradaEn": "2026-11-12T17:02:29+01:00"
+    },
+    {
+      "id": "R8",
+      "cuentaId": "PAAPEX6339420000001",
+      "symbol": "MNQ",
+      "contrato": "MNQZ6",
+      "type": "COMPRA",
+      "tipoOrden": "limitada",
+      "colocadaEn": "2026-11-12T16:28:01+01:00",
+      "entryPrice": 28231.25,
+      "quantity": 1,
+      "plan": {
+        "sl": 28191.5,
+        "tp": 28403,
+        "valorPunto": 2,
+        "riesgoUsd": 79.5
+      },
+      "auditor": "Variante B aprobada con ajustes (28180 / SL 28140 / TP 28388); el usuario elige entrar en el LB 28202",
+      "notas": "Entrada en el primer mínimo tras el LB 28202.25, después de barrer los mínimos iguales 28250-28258. SL 28191.5: dentro del desequilibrio de 1m 28160-28193.75 (riesgo asumido). TP 28403, encima de 28402.75: valorar 28388.",
+      "cancelarSi": [
+        "rompe 28392 / 28402.75 sin llenarse",
+        "vela de 5m cierra bajo 28160 antes del llenado",
+        "19:30 sin llenarse"
+      ],
+      "estado": "cancelada",
+      "canceladaEn": "2026-11-12T16:54:15.342Z",
+      "motivo": "Cancelada: el precio rompió 28402.75 (16:50) sin llenar 28231.25 (mínimo del retroceso 28244). Condición de cancelación cumplida; no es un error."
     }
   ]
 }
