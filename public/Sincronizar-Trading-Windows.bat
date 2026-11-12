@@ -35,21 +35,34 @@ if not exist "%~dp0sync-agent.mjs" (
 :: 3. Comprobar si TradingView esta respondiendo en el puerto 9222
 curl -s http://127.0.0.1:9222/json/version >nul 2>nul
 if %errorlevel% neq 0 (
-    echo [*] TradingView no esta abierto con el puerto de sincronizacion.
-    echo [*] Abriendo TradingView Desktop automaticamente...
+    echo [*] TradingView no tiene el puerto de conexion activo.
+
+    :: Si TradingView ya estaba abierto normalmente (sin puerto), debemos cerrarlo primero
+    tasklist /FI "IMAGENAME eq TradingView.exe" 2>nul | find /I /N "TradingView.exe">nul
+    if %errorlevel% equ 0 (
+        echo [*] TradingView estaba abierto sin el puerto de sincronizacion.
+        echo [*] Reiniciando TradingView con el puerto 9222...
+        taskkill /F /IM TradingView.exe >nul 2>nul
+        timeout /t 2 /nobreak >nul
+    ) else (
+        echo [*] Abriendo TradingView Desktop con puerto de sincronizacion...
+    )
     
-    if exist "%LOCALAPPDATA%\Programs\TradingView\TradingView.exe" (
-        start "" "%LOCALAPPDATA%\Programs\TradingView\TradingView.exe" --remote-debugging-port=9222
-    ) else if exist "%ProgramFiles%\TradingView\TradingView.exe" (
-        start "" "%ProgramFiles%\TradingView\TradingView.exe" --remote-debugging-port=9222
-    ) else if exist "%ProgramFiles(x86)%\TradingView\TradingView.exe" (
-        start "" "%ProgramFiles(x86)%\TradingView\TradingView.exe" --remote-debugging-port=9222
+    set "TV_PATH="
+    if exist "%LOCALAPPDATA%\Programs\TradingView\TradingView.exe" set "TV_PATH=%LOCALAPPDATA%\Programs\TradingView\TradingView.exe"
+    if not defined TV_PATH if exist "%LOCALAPPDATA%\Programs\TradingView Desktop\TradingView.exe" set "TV_PATH=%LOCALAPPDATA%\Programs\TradingView Desktop\TradingView.exe"
+    if not defined TV_PATH if exist "%ProgramFiles%\TradingView\TradingView.exe" set "TV_PATH=%ProgramFiles%\TradingView\TradingView.exe"
+    if not defined TV_PATH if exist "%ProgramFiles(x86)%\TradingView\TradingView.exe" set "TV_PATH=%ProgramFiles(x86)%\TradingView\TradingView.exe"
+    if not defined TV_PATH if exist "%LOCALAPPDATA%\Microsoft\WindowsApps\TradingView.exe" set "TV_PATH=%LOCALAPPDATA%\Microsoft\WindowsApps\TradingView.exe"
+
+    if defined TV_PATH (
+        start "" "%TV_PATH%" --remote-debugging-port=9222
     ) else (
         start "" "TradingView" --remote-debugging-port=9222 2>nul
     )
     
-    echo [*] Esperando 5 segundos a que inicie TradingView...
-    timeout /t 5 /nobreak >nul
+    echo [*] Esperando 6 segundos a que TradingView cargue su interfaz...
+    timeout /t 6 /nobreak >nul
 )
 
 :: 4. Ejecutar sincronizador
