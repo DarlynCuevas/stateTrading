@@ -17,6 +17,7 @@ export interface TVExtractedOrder {
 export interface TVExtractedData {
   accountName?: string;
   balance?: number;
+  trades?: any[];
   orders: TVExtractedOrder[];
 }
 
@@ -55,6 +56,7 @@ export async function extractTradingViewDesktopData(port = 9222): Promise<TVExtr
 
         const broker = trading._activeBroker;
         if (!broker) return { error: "No hay broker conectado en TradingView" };
+        const conn = broker._brokerConnection;
 
         // 1. Obtener el nombre real de la cuenta seleccionada en la interfaz de TradingView (ej: APEX6339420000008)
         let accountName = "";
@@ -64,14 +66,10 @@ export async function extractTradingViewDesktopData(port = 9222): Promise<TVExtr
           accountName = accSpan.textContent.trim();
         }
 
-        // Si no está en el DOM, revisar si broker o trading tienen cuenta que no sea el ID interno D724...
-        if (!accountName || accountName.startsWith("D724")) {
-          const rawAcc = (broker.currentAccount && typeof broker.currentAccount === 'function') 
-            ? broker.currentAccount() 
-            : trading._account;
-          if (rawAcc && typeof rawAcc === 'string' && !rawAcc.startsWith("D724")) {
-            accountName = rawAcc;
-          }
+        if (conn && conn._accounts && (!accountName || accountName.startsWith("D"))) {
+          const curId = broker.currentAccount ? broker.currentAccount() : null;
+          const found = conn._accounts.find((a: any) => a.id === curId);
+          if (found && found.name) accountName = found.name;
         }
 
         // 2. Extraer balance/patrimonio desde los campos de resumen de TradingView
@@ -81,13 +79,76 @@ export async function extractTradingViewDesktopData(port = 9222): Promise<TVExtr
           const title = field.querySelector('[class*="title"]')?.textContent || "";
           const val = field.querySelector('[class*="value"]')?.textContent || "";
           if (/valoraci|balance|equity|patrimonio/i.test(title)) {
-            // Formato español: 24.595,16 -> 24595.16
             const clean = val.split('.').join('').replace(',', '.');
             balance = parseFloat(clean) || 0;
             break;
           }
         }
 
+        if (!balance && conn && conn._accountManagerTablesData && conn._accountManagerTablesData["0"]) {
+          const row = conn._accountManagerTablesData["0"][0];
+          if (row && row.netLiq) {
+            balance = parseFloat(row.netLiq) || 0;
+          }
+        }
+
+        // 3. Extraer EJECUCIONES REALES emparejadas (Round-trip FIFO)
+        const execs = (conn && conn._tvExecutions) ? [...conn._tvExecutions] : [];
+        execs.sort((a: any, b: any) => a.time - b.time);
+
+        const POINT_VALUES: Record<string, number> = {
+          'MNQ': 2, 'NQ': 20, 'MES': 5, 'ES': 50,
+          'MGC': 10, 'GC': 100, 'MYM': 0.5, 'YM': 5,
+          'M2K': 10, 'RTY': 50
+        };
+
+        function getPointValue(sym: string) {
+          for (let k in POINT_VALUES) {
+            if (sym.includes(k)) return POINT_VALUES[k];
+          }
+          return 1;
+        }
+
+        const trades: any[] = [];
+        const openPositions: Record<string, any[]> = {};
+
+        for (let e of execs) {
+          const sym = e.symbolDisplayName || e.symbol || 'UNKNOWN';
+          const cleanSym = sym.replace(/[^A-Za-z0-9]/g, '');
+          if (!openPositions[cleanSym]) openPositions[cleanSym] = [];
+          const queue = openPositions[cleanSym];
+
+          if (queue.length > 0 && queue[0].side !== e.side) {
+            const openFill = queue.shift();
+            const isLong = openFill.side === 1;
+            const entryPrice = openFill.price;
+            const exitPrice = e.price;
+            const diff = isLong ? (exitPrice - entryPrice) : (entryPrice - exitPrice);
+            const pv = getPointValue(cleanSym);
+            const grossPnl = Number((diff * pv * e.qty).toFixed(2));
+            const commission = Number((1.04 * 2 * e.qty).toFixed(2));
+            const netPnl = Number((grossPnl - commission).toFixed(2));
+
+            trades.push({
+              id: 'TV-' + openFill.id + '-' + e.id,
+              symbol: cleanSym,
+              type: isLong ? 'COMPRA' : 'VENTA',
+              openTime: new Date(openFill.time).toISOString(),
+              closeTime: new Date(e.time).toISOString(),
+              entryPrice,
+              exitPrice,
+              quantity: e.qty,
+              pnl: grossPnl,
+              commission,
+              netPnl,
+              resultado: netPnl > 0 ? 'TP' : (netPnl < 0 ? 'SL' : 'BE')
+            });
+          } else {
+            queue.push(e);
+          }
+        }
+
+        // 4. Extraer órdenes crudas
         const rawOrders = (broker._ordersCache && broker._ordersCache._objects) ? broker._ordersCache._objects : {};
         const orders = [];
 
@@ -112,6 +173,7 @@ export async function extractTradingViewDesktopData(port = 9222): Promise<TVExtr
         return {
           accountName,
           balance,
+          trades,
           orders
         };
       } catch(e) {

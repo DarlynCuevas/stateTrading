@@ -100,30 +100,55 @@ export async function POST(req: Request) {
 
     // 3. Guardar las operaciones en Supabase
     let guardadas = 0;
-    for (const order of tvData.orders) {
-      await supabase.from("trades").upsert({
-        id: `TV-${order.id}`,
-        account_id: accountId,
-        user_id: user.id,
-        real: true,
-        symbol: order.symbol,
-        type: order.side,
-        open_time: order.time,
-        entry_price: order.price,
-        exit_price: order.price,
-        quantity: order.qty,
-        sl: order.stopLoss,
-        tp: order.takeProfit,
-        net_pnl: 0,
-        pnl: 0,
-        resultado: order.status === 6 ? "EJECUTADA" : "CANCELADA/PENDIENTE",
-      });
-      guardadas++;
+
+    // Si vienen operaciones cerradas emparejadas (trades reales con PnL), las guardamos preferentemente
+    if (tvData.trades && Array.isArray(tvData.trades) && tvData.trades.length > 0) {
+      for (const t of tvData.trades) {
+        await supabase.from("trades").upsert({
+          id: t.id,
+          account_id: accountId,
+          user_id: user.id,
+          real: true,
+          symbol: t.symbol,
+          type: t.type,
+          open_time: t.openTime,
+          close_time: t.closeTime,
+          entry_price: t.entryPrice,
+          exit_price: t.exitPrice,
+          quantity: t.quantity,
+          pnl: t.pnl,
+          commission: t.commission,
+          net_pnl: t.netPnl,
+          resultado: t.resultado,
+        });
+        guardadas++;
+      }
+    } else if (tvData.orders && Array.isArray(tvData.orders)) {
+      for (const order of tvData.orders) {
+        await supabase.from("trades").upsert({
+          id: `TV-${order.id}`,
+          account_id: accountId,
+          user_id: user.id,
+          real: true,
+          symbol: order.symbol,
+          type: order.side,
+          open_time: order.time,
+          entry_price: order.price,
+          exit_price: order.price,
+          quantity: order.qty,
+          sl: order.stopLoss,
+          tp: order.takeProfit,
+          net_pnl: 0,
+          pnl: 0,
+          resultado: order.status === 2 || order.status === 6 ? "EJECUTADA" : "CANCELADA/PENDIENTE",
+        });
+        guardadas++;
+      }
     }
 
     return NextResponse.json({
       success: true,
-      message: `¡Sincronización exitosa desde TradingView Desktop! ${guardadas} órdenes guardadas.`,
+      message: `¡Sincronización exitosa desde TradingView Desktop! ${guardadas} operaciones guardadas.`,
       ordersCount: guardadas,
       account: accountId,
     });

@@ -1,0 +1,375 @@
+{
+  "version": 1,
+  "actualizadoEn": "2026-11-12T15:34:02.634Z",
+  "zonaHoraria": "Europe/Madrid",
+  "moneda": "USD",
+  "cuentas": [
+    {
+      "id": "APEX6339420000008",
+      "alias": "Evaluación 25k",
+      "usuarioEmail": "darlyndcs@gmail.com",
+      "broker": "Apex / Tradovate",
+      "tipo": "evaluacion",
+      "tamano": 25000,
+      "saldoInicial": 25000,
+      "reglas": {
+        "drawdownTipo": "trailing",
+        "drawdownMax": 1500,
+        "objetivoBeneficio": null,
+        "contratosMax": null,
+        "reglaConsistenciaPct": null
+      },
+      "activa": true
+    },
+    {
+      "id": "PAAPEX6339420000001",
+      "alias": "Fondeada 50k #1",
+      "usuarioEmail": "darlyndcs@gmail.com",
+      "broker": "Apex / Tradovate",
+      "tipo": "fondeada",
+      "tamano": 50000,
+      "saldoInicial": 50000,
+      "reglas": {
+        "drawdownTipo": "trailing",
+        "drawdownMax": 2500,
+        "objetivoBeneficio": null,
+        "contratosMax": null,
+        "reglaConsistenciaPct": null
+      },
+      "activa": true
+    },
+    {
+      "id": "PAAPEX6339420000002",
+      "alias": "Fondeada 50k #2",
+      "usuarioEmail": "darlyndcs@gmail.com",
+      "broker": "Apex / Tradovate",
+      "tipo": "fondeada",
+      "tamano": 50000,
+      "saldoInicial": 50000,
+      "reglas": {
+        "drawdownTipo": "trailing",
+        "drawdownMax": 2500,
+        "objetivoBeneficio": null,
+        "contratosMax": null,
+        "reglaConsistenciaPct": null
+      },
+      "activa": true
+    }
+  ],
+  "estadoCuentas": [
+    {
+      "cuentaId": "APEX6339420000008",
+      "fecha": "2026-11-12",
+      "saldo": 24595.16,
+      "pnlDia": -74.34,
+      "nivelLiquidacion": 24175.46,
+      "distanciaDrawdown": 419.7
+    },
+    {
+      "cuentaId": "PAAPEX6339420000001",
+      "fecha": "2026-11-12",
+      "saldo": 49054.41,
+      "pnlDia": -99.04,
+      "nivelLiquidacion": 48623.36,
+      "distanciaDrawdown": 431.05
+    },
+    {
+      "cuentaId": "PAAPEX6339420000002",
+      "fecha": "2026-11-12",
+      "saldo": 49145.92,
+      "pnlDia": 0,
+      "nivelLiquidacion": 48563.63,
+      "distanciaDrawdown": 582.29
+    }
+  ],
+  "operaciones": [
+    {
+      "id": "R1",
+      "cuentaId": null,
+      "real": true,
+      "symbol": "MGC",
+      "type": "VENTA",
+      "openTime": "2026-11-11",
+      "closeTime": null,
+      "entryPrice": null,
+      "exitPrice": null,
+      "quantity": null,
+      "pnl": null,
+      "commission": null,
+      "netPnl": null,
+      "plan": {
+        "sl": null,
+        "tp": null,
+        "valorPunto": 10,
+        "riesgoUsd": null
+      },
+      "rMultiple": -1,
+      "resultado": "SL",
+      "sesion": null,
+      "setup": "venta antes de atrapar a los vendedores",
+      "auditor": null,
+      "errores": [
+        "E1"
+      ],
+      "aciertos": [],
+      "leccion": "No se vende sin atrapar antes a los vendedores: el precio subió a barrer sus stops y luego bajó.",
+      "captura": null,
+      "pendiente": "faltan cuenta, hora, entrada, SL e importe"
+    },
+    {
+      "id": "R2",
+      "cuentaId": null,
+      "real": true,
+      "symbol": "MNQ",
+      "type": "VENTA",
+      "openTime": "2026-11-11",
+      "closeTime": "2026-11-11T15:30:00+01:00",
+      "entryPrice": 28395.25,
+      "exitPrice": 28406.75,
+      "quantity": null,
+      "pnl": null,
+      "commission": null,
+      "netPnl": null,
+      "plan": {
+        "sl": 28406.75,
+        "tp": null,
+        "valorPunto": 2,
+        "riesgoUsd": null
+      },
+      "rMultiple": -1,
+      "resultado": "SL",
+      "sesion": "Apertura NY",
+      "setup": "LB creado por el dato de las 14:30",
+      "auditor": null,
+      "errores": [
+        "E4"
+      ],
+      "aciertos": [],
+      "leccion": "La vela de la apertura de NY (15:30) barrió hasta 28426.25 y luego bajó a 28285.5. Sin órdenes entre 15:15 y 15:45.",
+      "captura": null,
+      "pendiente": "faltan cuenta, hora de entrada, cantidad e importe"
+    },
+    {
+      "id": "R3",
+      "cuentaId": "APEX6339420000008",
+      "real": true,
+      "symbol": "MGC",
+      "type": "VENTA",
+      "openTime": "2026-11-12T01:40:00+01:00",
+      "closeTime": "2026-11-12T01:55:00+01:00",
+      "entryPrice": 3993.3,
+      "exitPrice": 4000.7,
+      "quantity": 1,
+      "pnl": -74,
+      "commission": 0.34,
+      "netPnl": -74.34,
+      "plan": {
+        "sl": 4000.7,
+        "tp": 3961.5,
+        "valorPunto": 10,
+        "riesgoUsd": 74
+      },
+      "rMultiple": -1,
+      "resultado": "SL",
+      "sesion": "Asia",
+      "setup": "continuación bajista, LB de las 00:00 (barrido 4000.4)",
+      "auditor": null,
+      "errores": [
+        "E2",
+        "E3"
+      ],
+      "aciertos": [],
+      "leccion": "El LB solo tomó 3998.3 y dejó 4001.8 y 4002.9 sin tomar desde el origen 4014.4. El LB bueno fue 4005.9 (02:15). El TP de 3961.5 se alcanzó a las 08:30.",
+      "captura": "Trading/Liq/Claude/operaciones/reales/capturas/2026-11-12_MGC_op03_venta_SL.png"
+    },
+    {
+      "id": "R5",
+      "cuentaId": "APEX6339420000008",
+      "real": true,
+      "symbol": "MNQ",
+      "contrato": "MNQZ6",
+      "type": "COMPRA",
+      "openTime": "2026-11-12T14:25:00+01:00",
+      "closeTime": "2026-11-12T14:30:00+01:00",
+      "entryPrice": 28083.75,
+      "exitPrice": 28062.25,
+      "quantity": 1,
+      "pnl": -43,
+      "commission": null,
+      "netPnl": null,
+      "plan": {
+        "sl": 28062.5,
+        "tp": 28370,
+        "valorPunto": 2,
+        "riesgoUsd": 43
+      },
+      "rMultiple": -1,
+      "resultado": "SL",
+      "sesion": "Dato de las 14:30",
+      "setup": "compra en el LB 28013.75 (barrido de los mínimos 28031-28036 y BOS)",
+      "auditor": null,
+      "errores": [
+        "E3",
+        "E4",
+        "E9"
+      ],
+      "aciertos": [],
+      "leccion": "SL de solo 21 pts, dentro del retroceso normal y del ruido del dato. Límite 28091.25 llenado en 28083.75.",
+      "captura": null,
+      "pendiente": "horas aproximadas (orden límite 28091.25); confirmar hora exacta e importe neto"
+    },
+    {
+      "id": "R7",
+      "cuentaId": "PAAPEX6339420000001",
+      "real": true,
+      "symbol": "MNQ",
+      "contrato": "MNQZ6",
+      "type": "COMPRA",
+      "openTime": "2026-11-12T15:02:06+01:00",
+      "closeTime": "2026-11-12T15:29:35+01:00",
+      "entryPrice": 28098.5,
+      "exitPrice": 28049.5,
+      "quantity": 1,
+      "pnl": -98,
+      "commission": null,
+      "netPnl": null,
+      "plan": {
+        "sl": 28049.75,
+        "tp": 28697.25,
+        "valorPunto": 2,
+        "riesgoUsd": 97.5
+      },
+      "rMultiple": -1,
+      "resultado": "SL",
+      "sesion": "Apertura NY",
+      "setup": "confirmación tras el BOS de 28055 (14:52); compra en el retroceso",
+      "auditor": "DESCARTAR la entrada 28090-28095 (proponía límite 28061 / SL 28049)",
+      "errores": [
+        "E3",
+        "E4",
+        "E8",
+        "E9"
+      ],
+      "aciertos": [],
+      "leccion": "SL en el borde del desequilibrio de 1m 28049.25-28065.5 (BOS del LB 28013.75) y bajo mínimos iguales 28055-28058: la vela de las 15:30 lo llenó entero (28044.25) y luego subió 340 pts. Entrada en la zona que el auditor descartó, posición abierta en la apertura de NY y riesgo ~98 $ (>15 % del colchón de 530 $).",
+      "captura": null,
+      "pendiente": "comisión; confirmar si también hubo operación en …002"
+    }
+  ],
+  "ordenesAbiertas": [
+    {
+      "id": "R6",
+      "cuentaId": "APEX6339420000008",
+      "symbol": "MNQ",
+      "contrato": "MNQZ6",
+      "type": "COMPRA",
+      "tipoOrden": "limitada (posición abierta)",
+      "colocadaEn": "2026-11-12T14:30:00+01:00",
+      "entryPrice": 28079.25,
+      "quantity": 1,
+      "plan": {
+        "sl": 28183,
+        "tp": 28698.25,
+        "valorPunto": 2,
+        "riesgoUsd": 133
+      },
+      "auditor": null,
+      "notas": "Abierta en la ventana del dato (E4) y sin auditor (E9). Riesgo inicial 133 $ (~35 % del colchón, E8). SL inicial 28012.75, bajo el extremo del LB 28013.75: sobrevivió al barrido de 28044.25 de las 15:30. TP 28698.25 = máximo de 1H sin tomar del 11 nov (28697.25): es liquidez real, NO es E7. SL a breakeven tras romper 28165."
+    }
+  ],
+  "resumenesSemanales": [
+    {
+      "periodId": "2026-W46",
+      "label": "Semana del 9 al 13 nov 2026",
+      "estado": "provisional",
+      "operaciones": 5,
+      "ganadas": 0,
+      "perdidas": 5,
+      "breakeven": 0,
+      "winRate": 0,
+      "resultadoR": -5,
+      "resultadoUsd": -74.34,
+      "resultadoUsdCompleto": false,
+      "errores": {
+        "E1": 1,
+        "E4": 3,
+        "E2": 1,
+        "E3": 3,
+        "E9": 2,
+        "E8": 1
+      },
+      "aciertos": {},
+      "erroresRepetidos": [
+        "E2",
+        "E6",
+        "E1"
+      ],
+      "foco": "E2: el LB tiene que llevarse TODA la liquidez de la pierna. Si el SL queda pegado a un máximo o mínimo evidente, estás en la piscina.",
+      "focoAnteriorCumplido": null
+    }
+  ],
+  "catalogo": {
+    "valorPunto": {
+      "MNQ": 2,
+      "NQ": 20,
+      "MES": 5,
+      "ES": 50,
+      "MGC": 10,
+      "GC": 100
+    },
+    "errores": {
+      "E1": "Entrar sin atrapar antes a los traders del mismo lado",
+      "E2": "LB inválido: deja liquidez de la izquierda o de la pierna sin tomar",
+      "E3": "SL dentro de la piscina de stops",
+      "E4": "Orden en la apertura de NY (15:15-15:45) o ±15 min de una noticia",
+      "E5": "Entrar sin bloque formado",
+      "E6": "No reevaluar el sesgo tras romper un máximo o mínimo grande",
+      "E7": "TP fuera de la siguiente liquidez",
+      "E8": "Riesgo mayor del ~15 % del colchón o la misma orden en varias cuentas",
+      "E9": "Saltarse la auditoría o entrar con DESCARTAR"
+    },
+    "aciertos": {
+      "A1": "Esperó el barrido y la trampa",
+      "A2": "LB válido: se llevó toda la liquidez de la pierna",
+      "A3": "TP en la siguiente liquidez real",
+      "A4": "Descartó un setup sin requisitos",
+      "A5": "Reevaluó el sesgo a tiempo",
+      "A6": "Respetó el horario",
+      "A7": "Corrigió la orden después de la auditoría"
+    }
+  },
+  "ordenesHistorial": [
+    {
+      "id": "R4",
+      "cuentaId": "PAAPEX6339420000002",
+      "symbol": "MNQ",
+      "contrato": "MNQZ6",
+      "type": "VENTA",
+      "tipoOrden": "limitada",
+      "colocadaEn": "2026-11-12T11:00:00+01:00",
+      "entryPrice": 28333.75,
+      "quantity": 1,
+      "plan": {
+        "sl": 28370.25,
+        "tp": 28130.75,
+        "valorPunto": 2,
+        "riesgoUsd": 73
+      },
+      "auditor": "APROBAR CON AJUSTES",
+      "ajustesAuditor": {
+        "entrada": "28340-28345",
+        "sl": 28380,
+        "tp1": 28163,
+        "tp2": 28140
+      },
+      "cancelarSi": [
+        "14:15 sin llenarse (peticiones de desempleo a las 14:30)",
+        "pierde 28161.5 antes del llenado",
+        "vela de 15m cierra por encima de 28369"
+      ],
+      "estado": "cancelada",
+      "canceladaEn": "2026-11-12T13:11:20.768Z",
+      "motivo": "Cancelada 14:10: perdió 28161.5 (condición de cancelación) y alcanzó el TP 28130 sin llenar la entrada. Lección: dirección correcta, entrada demasiado alta; el precio no necesitó barrer 28369."
+    }
+  ]
+}
