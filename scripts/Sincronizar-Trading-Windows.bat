@@ -36,32 +36,14 @@ if not exist "%~dp0sync-agent.mjs" (
 curl -s http://127.0.0.1:9222/json/version >nul 2>nul
 if %errorlevel% neq 0 (
     echo [*] TradingView no tiene el puerto de conexion activo.
+    echo [*] Reiniciando TradingView con el puerto 9222 a traves de PowerShell...
 
-    :: Si TradingView ya estaba abierto normalmente (sin puerto), debemos cerrarlo primero
-    tasklist /FI "IMAGENAME eq TradingView.exe" 2>nul | find /I /N "TradingView.exe">nul
-    if %errorlevel% equ 0 (
-        echo [*] TradingView estaba abierto sin el puerto de sincronizacion.
-        echo [*] Reiniciando TradingView con el puerto 9222...
-        taskkill /F /IM TradingView.exe >nul 2>nul
-        timeout /t 2 /nobreak >nul
-    ) else (
-        echo [*] Abriendo TradingView Desktop con puerto de sincronizacion...
-    )
-    
-    set "TV_PATH="
-    if exist "%LOCALAPPDATA%\Programs\TradingView\TradingView.exe" set "TV_PATH=%LOCALAPPDATA%\Programs\TradingView\TradingView.exe"
-    if not defined TV_PATH if exist "%LOCALAPPDATA%\Programs\TradingView Desktop\TradingView.exe" set "TV_PATH=%LOCALAPPDATA%\Programs\TradingView Desktop\TradingView.exe"
-    if not defined TV_PATH if exist "%ProgramFiles%\TradingView\TradingView.exe" set "TV_PATH=%ProgramFiles%\TradingView\TradingView.exe"
-    if not defined TV_PATH if exist "%ProgramFiles(x86)%\TradingView\TradingView.exe" set "TV_PATH=%ProgramFiles(x86)%\TradingView\TradingView.exe"
-    if not defined TV_PATH if exist "%LOCALAPPDATA%\Microsoft\WindowsApps\TradingView.exe" set "TV_PATH=%LOCALAPPDATA%\Microsoft\WindowsApps\TradingView.exe"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-Process TradingView -ErrorAction SilentlyContinue | Stop-Process -Force"
+    timeout /t 2 /nobreak >nul
 
-    if defined TV_PATH (
-        start "" "%TV_PATH%" --remote-debugging-port=9222
-    ) else (
-        start "" "TradingView" --remote-debugging-port=9222 2>nul
-    )
-    
-    echo [*] Esperando 6 segundos a que TradingView cargue su interfaz...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$paths = @(\"$env:LOCALAPPDATA\Microsoft\WindowsApps\TradingView.exe\", \"$env:USERPROFILE\OneDrive\Escritorio\TradingView.lnk\", \"$env:USERPROFILE\OneDrive\Desktop\TradingView.lnk\", \"$env:USERPROFILE\Desktop\TradingView.lnk\", \"$env:LOCALAPPDATA\Programs\TradingView\TradingView.exe\", \"$env:ProgramFiles\TradingView\TradingView.exe\"); $started = $false; foreach ($p in $paths) { if (Test-Path $p) { Write-Host \"[*] Abriendo TradingView desde: $p\"; Start-Process $p -ArgumentList '--remote-debugging-port=9222'; $started = $true; break; } }; if (-not $started) { Write-Host '[*] Abriendo comando TradingView...'; Start-Process 'TradingView' -ArgumentList '--remote-debugging-port=9222'; }"
+
+    echo [*] Esperando 6 segundos a que TradingView cargue...
     timeout /t 6 /nobreak >nul
 )
 

@@ -1,18 +1,25 @@
 @echo off
 title Iniciar TradingView para StateTrading
-taskkill /F /IM TradingView.exe >nul 2>nul
-timeout /t 1 /nobreak >nul
+cd /d "%~dp0"
 
-set "TV_PATH="
-if exist "%LOCALAPPDATA%\Programs\TradingView\TradingView.exe" set "TV_PATH=%LOCALAPPDATA%\Programs\TradingView\TradingView.exe"
-if not defined TV_PATH if exist "%LOCALAPPDATA%\Programs\TradingView Desktop\TradingView.exe" set "TV_PATH=%LOCALAPPDATA%\Programs\TradingView Desktop\TradingView.exe"
-if not defined TV_PATH if exist "%ProgramFiles%\TradingView\TradingView.exe" set "TV_PATH=%ProgramFiles%\TradingView\TradingView.exe"
-if not defined TV_PATH if exist "%ProgramFiles(x86)%\TradingView\TradingView.exe" set "TV_PATH=%ProgramFiles(x86)%\TradingView\TradingView.exe"
-if not defined TV_PATH if exist "%LOCALAPPDATA%\Microsoft\WindowsApps\TradingView.exe" set "TV_PATH=%LOCALAPPDATA%\Microsoft\WindowsApps\TradingView.exe"
+echo ========================================================
+echo        Iniciar TradingView (Puerto de Sincronizacion)
+echo ========================================================
+echo.
+echo [*] Cerrando instancias previas de TradingView...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-Process TradingView -ErrorAction SilentlyContinue | Stop-Process -Force"
+timeout /t 2 /nobreak >nul
 
-if defined TV_PATH (
-    start "" "%TV_PATH%" --remote-debugging-port=9222
+echo [*] Iniciando TradingView con puerto 9222...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$paths = @(\"$env:LOCALAPPDATA\Microsoft\WindowsApps\TradingView.exe\", \"$env:USERPROFILE\OneDrive\Escritorio\TradingView.lnk\", \"$env:USERPROFILE\OneDrive\Desktop\TradingView.lnk\", \"$env:USERPROFILE\Desktop\TradingView.lnk\", \"$env:LOCALAPPDATA\Programs\TradingView\TradingView.exe\", \"$env:ProgramFiles\TradingView\TradingView.exe\"); $started = $false; foreach ($p in $paths) { if (Test-Path $p) { Write-Host \"[*] Iniciando desde: $p\"; Start-Process $p -ArgumentList '--remote-debugging-port=9222'; $started = $true; break; } }; if (-not $started) { Start-Process 'TradingView' -ArgumentList '--remote-debugging-port=9222'; }"
+
+echo [*] Comprobando conexion...
+timeout /t 5 /nobreak >nul
+curl -s http://127.0.0.1:9222/json/version >nul 2>nul
+if %errorlevel% equ 0 (
+    echo [OK] TradingView conectado y listo para sincronizar!
 ) else (
-    start "" "TradingView" --remote-debugging-port=9222 2>nul
+    echo [*] Espera unos segundos a que cargue TradingView y luego ejecuta la sincronizacion.
 )
-exit
+echo.
+pause
