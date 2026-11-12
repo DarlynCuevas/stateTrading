@@ -33,36 +33,82 @@ export default function ResetPasswordPage() {
     let mounted = true;
 
     async function checkAuth() {
-      // 1. Verificar si hay un evento o hash de recuperación
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        if (mounted) {
-          setHasValidSession(true);
-          setCheckingSession(false);
+      try {
+        // 1. Si viene con ?code= (flujo PKCE estándar de Supabase)
+        if (typeof window !== "undefined" && window.location.search) {
+          const searchParams = new URLSearchParams(window.location.search);
+          const code = searchParams.get("code");
+          if (code) {
+            const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+            if (!exchangeError && data?.session) {
+              if (mounted) {
+                setHasValidSession(true);
+                setCheckingSession(false);
+              }
+              return;
+            }
+          }
         }
-        return;
-      }
 
-      // 2. Escuchar por si Supabase procesa el hash de la URL
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-        if (event === "PASSWORD_RECOVERY" || session) {
+        // 2. Si viene con #access_token=... (flujo hash estándar)
+        if (typeof window !== "undefined" && window.location.hash) {
+          const hashStr = window.location.hash.replace(/^#/, "");
+          const hashParams = new URLSearchParams(hashStr);
+          const accessToken = hashParams.get("access_token");
+          const refreshToken = hashParams.get("refresh_token");
+          const type = hashParams.get("type");
+
+          if (accessToken) {
+            const { data, error: setSessionError } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || "",
+            });
+            if (!setSessionError && data?.session) {
+              if (mounted) {
+                setHasValidSession(true);
+                setCheckingSession(false);
+              }
+              return;
+            }
+          }
+        }
+
+        // 3. Verificar si ya hay una sesión activa en Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
           if (mounted) {
             setHasValidSession(true);
             setCheckingSession(false);
           }
+          return;
         }
-      });
 
-      // Timeout de seguridad por si el link ya caducó
-      setTimeout(() => {
+        // 4. Escuchar evento de recuperación en tiempo real
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (event === "PASSWORD_RECOVERY" || (session && event === "SIGNED_IN")) {
+            if (mounted) {
+              setHasValidSession(true);
+              setCheckingSession(false);
+            }
+          }
+        });
+
+        // Timeout por si el enlace es completamente inválido
+        setTimeout(() => {
+          if (mounted) {
+            setCheckingSession(false);
+          }
+        }, 3000);
+
+        return () => {
+          subscription.unsubscribe();
+        };
+      } catch (err) {
+        console.error("Error al verificar sesión de recuperación:", err);
         if (mounted) {
           setCheckingSession(false);
         }
-      }, 3500);
-
-      return () => {
-        subscription.unsubscribe();
-      };
+      }
     }
 
     checkAuth();
@@ -99,7 +145,7 @@ export default function ResetPasswordPage() {
         setSuccess(true);
         setTimeout(() => {
           router.push("/");
-        }, 2200);
+        }, 2000);
       }
     } catch {
       setError("Error de conexión. Intenta de nuevo.");

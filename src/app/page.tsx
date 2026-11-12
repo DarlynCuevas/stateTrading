@@ -250,6 +250,20 @@ export default function Home() {
 
   // ─── Verificar sesión al montar + escuchar cambios ────────────────
   React.useEffect(() => {
+    // Si la URL contiene parámetros de recuperación de contraseña o código de auth
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash || "";
+      const search = window.location.search || "";
+      if (
+        hash.includes("type=recovery") ||
+        search.includes("type=recovery") ||
+        search.includes("code=")
+      ) {
+        window.location.replace(`/reset-password${search}${hash}`);
+        return;
+      }
+    }
+
     supabase.auth.getUser().then(({ data: { user: u } }) => {
       setUser(u);
       setAuthChecking(false);
@@ -260,7 +274,9 @@ export default function Home() {
     } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (event === "PASSWORD_RECOVERY") {
-        setShowChangePasswordModal(true);
+        if (typeof window !== "undefined") {
+          window.location.replace("/reset-password");
+        }
       }
     });
 
@@ -341,6 +357,23 @@ export default function Home() {
 
   // ─── Auth gate ────────────────────────────────────────────────────
   if (!user) {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash || "";
+      const search = window.location.search || "";
+      if (hash.includes("type=recovery") || search.includes("type=recovery") || search.includes("code=")) {
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                Redirigiendo a restablecer contraseña...
+              </span>
+            </div>
+          </div>
+        );
+      }
+    }
+
     return (
       <AuthForm
         onAuthenticated={() =>
