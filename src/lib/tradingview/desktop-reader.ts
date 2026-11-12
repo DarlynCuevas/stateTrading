@@ -19,6 +19,7 @@ export interface TVExtractedData {
   balance?: number;
   trades?: any[];
   orders: TVExtractedOrder[];
+  accounts?: any[];
 }
 
 /**

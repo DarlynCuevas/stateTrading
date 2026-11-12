@@ -118,7 +118,7 @@ async function extractTradingViewData(port = 9222) {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(chartTarget.webSocketDebuggerUrl);
 
-    const extractorScript = `(function() {
+    const extractorScript = `(async function() {
       try {
         const trading = window.TradingViewApi && window.TradingViewApi._tradingService && window.TradingViewApi._tradingService.trading();
         if (!trading) return { error: "TradingView no tiene activo el servicio de trading" };
@@ -126,44 +126,6 @@ async function extractTradingViewData(port = 9222) {
         const broker = trading._activeBroker;
         if (!broker) return { error: "No hay broker conectado en TradingView" };
         const conn = broker._brokerConnection;
-
-        // 1. Obtener nombre real de la cuenta
-        let accountName = "";
-        const accSpan = document.querySelector('[data-qa-id="account-selector"] [class*="accountName"]') ||
-                        document.querySelector('[class*="accountName"]');
-        if (accSpan && accSpan.textContent) {
-          accountName = accSpan.textContent.trim();
-        }
-
-        if (conn && conn._accounts && (!accountName || accountName.startsWith("D"))) {
-          const curId = broker.currentAccount ? broker.currentAccount() : null;
-          const found = conn._accounts.find(a => a.id === curId);
-          if (found && found.name) accountName = found.name;
-        }
-
-        // 2. Extraer saldo (equity/patrimonio)
-        let balance = 0;
-        const summaryFields = document.querySelectorAll('[class*="accountSummaryField"]');
-        for (let field of summaryFields) {
-          const title = field.querySelector('[class*="title"]')?.textContent || "";
-          const val = field.querySelector('[class*="value"]')?.textContent || "";
-          if (/valoraci|balance|equity|patrimonio/i.test(title)) {
-            const clean = val.split('.').join('').replace(',', '.');
-            balance = parseFloat(clean) || 0;
-            break;
-          }
-        }
-
-        if (!balance && conn && conn._accountManagerTablesData && conn._accountManagerTablesData["0"]) {
-          const row = conn._accountManagerTablesData["0"][0];
-          if (row && row.netLiq) {
-            balance = parseFloat(row.netLiq) || 0;
-          }
-        }
-
-        // 3. Extraer EJECUCIONES REALES y emparejarlas (Round-trip FIFO)
-        const execs = (conn && conn._tvExecutions) ? [...conn._tvExecutions] : [];
-        execs.sort((a, b) => a.time - b.time);
 
         const POINT_VALUES = {
           'MNQ': 2, 'NQ': 20, 'MES': 5, 'ES': 50,
@@ -178,66 +140,101 @@ async function extractTradingViewData(port = 9222) {
           return 1;
         }
 
-        const trades = [];
-        const openPositions = {};
+        function pairExecutions(execs) {
+          execs.sort((a, b) => a.time - b.time);
+          const trades = [];
+          const openPositions = {};
+          for (let e of execs) {
+            const sym = e.symbolDisplayName || e.symbol || 'UNKNOWN';
+            const cleanSym = sym.replace(/[^A-Za-z0-9]/g, '');
+            if (!openPositions[cleanSym]) openPositions[cleanSym] = [];
+            const queue = openPositions[cleanSym];
 
-        for (let e of execs) {
-          const sym = e.symbolDisplayName || e.symbol || 'UNKNOWN';
-          const cleanSym = sym.replace(/[^A-Za-z0-9]/g, '');
-          if (!openPositions[cleanSym]) openPositions[cleanSym] = [];
-          const queue = openPositions[cleanSym];
+            if (queue.length > 0 && queue[0].side !== e.side) {
+              const openFill = queue.shift();
+              const isLong = openFill.side === 1;
+              const entryPrice = openFill.price;
+              const exitPrice = e.price;
+              const diff = isLong ? (exitPrice - entryPrice) : (entryPrice - exitPrice);
+              const pv = getPointValue(cleanSym);
+              const grossPnl = Number((diff * pv * e.qty).toFixed(2));
+              const commission = Number((1.04 * 2 * e.qty).toFixed(2));
+              const netPnl = Number((grossPnl - commission).toFixed(2));
 
-          if (queue.length > 0 && queue[0].side !== e.side) {
-            const openFill = queue.shift();
-            const isLong = openFill.side === 1;
-            const entryPrice = openFill.price;
-            const exitPrice = e.price;
-            const diff = isLong ? (exitPrice - entryPrice) : (entryPrice - exitPrice);
-            const pv = getPointValue(cleanSym);
-            const grossPnl = Number((diff * pv * e.qty).toFixed(2));
-            const commission = Number((1.04 * 2 * e.qty).toFixed(2));
-            const netPnl = Number((grossPnl - commission).toFixed(2));
-
-            trades.push({
-              id: 'TV-' + openFill.id + '-' + e.id,
-              symbol: cleanSym,
-              type: isLong ? 'COMPRA' : 'VENTA',
-              openTime: new Date(openFill.time).toISOString(),
-              closeTime: new Date(e.time).toISOString(),
-              entryPrice,
-              exitPrice,
-              quantity: e.qty,
-              pnl: grossPnl,
-              commission,
-              netPnl,
-              resultado: netPnl > 0 ? 'TP' : (netPnl < 0 ? 'SL' : 'BE')
-            });
-          } else {
-            queue.push(e);
+              trades.push({
+                id: 'TV-' + openFill.id + '-' + e.id,
+                symbol: cleanSym,
+                type: isLong ? 'COMPRA' : 'VENTA',
+                openTime: new Date(openFill.time).toISOString(),
+                closeTime: new Date(e.time).toISOString(),
+                entryPrice,
+                exitPrice,
+                quantity: e.qty,
+                pnl: grossPnl,
+                commission,
+                netPnl,
+                resultado: netPnl > 0 ? 'TP' : (netPnl < 0 ? 'SL' : 'BE')
+              });
+            } else {
+              queue.push(e);
+            }
           }
+          return trades;
         }
 
-        // 4. Extraer órdenes crudas
-        const rawOrders = (broker._ordersCache && broker._ordersCache._objects) ? broker._ordersCache._objects : {};
-        const orders = [];
-        for (let id in rawOrders) {
-          const o = rawOrders[id];
-          if (!o) continue;
-          orders.push({
-            id: String(o.id || id),
-            symbol: o.symbolDisplayName || o.symbol || "UNKNOWN",
-            side: o.side === 1 ? "COMPRA" : "VENTA",
-            qty: Number(o.qty || o.filledQty || 1),
-            price: Number(o.avgPrice || o.price || o.stopPrice || o.limitPrice || 0),
-            status: o.status,
-            takeProfit: o.takeProfit ? Number(o.takeProfit) : undefined,
-            stopLoss: o.stopLoss ? Number(o.stopLoss) : undefined,
-            time: o.updateTime ? new Date(o.updateTime).toISOString() : new Date().toISOString(),
-            account: accountName || "APEX"
-          });
+        const accountsToScan = (conn && conn._accounts && conn._accounts.length > 0)
+          ? conn._accounts
+          : [{ id: broker.currentAccount ? broker.currentAccount() : 'default', name: 'APEX' }];
+
+        const origAcc = broker.currentAccount ? broker.currentAccount() : null;
+        const allAccounts = [];
+
+        for (let acc of accountsToScan) {
+          try {
+            if (conn && conn.setCurrentAccount) {
+              await conn.setCurrentAccount(acc.id);
+            }
+            // Esperar 1.5s para que TradingView cargue saldos y ejecuciones de esta cuenta
+            await new Promise(r => setTimeout(r, 1500));
+
+            // Leer saldo (netLiq)
+            let balance = 0;
+            const summaryTable = conn._accountManagerTablesData ? conn._accountManagerTablesData['0'] : null;
+            if (summaryTable) {
+              const row = Array.isArray(summaryTable) ? summaryTable[0] : (Array.isArray(summaryTable[0]) ? summaryTable[0][0] : null);
+              if (row && row.netLiq) balance = parseFloat(row.netLiq) || 0;
+            }
+
+            if (!balance) {
+              const summaryFields = document.querySelectorAll('[class*="accountSummaryField"]');
+              for (let field of summaryFields) {
+                const title = field.querySelector('[class*="title"]')?.textContent || "";
+                const val = field.querySelector('[class*="value"]')?.textContent || "";
+                if (/valoraci|balance|equity|patrimonio/i.test(title)) {
+                  balance = parseFloat(val.split('.').join('').replace(',', '.')) || 0;
+                  break;
+                }
+              }
+            }
+
+            const execs = conn._tvExecutions ? [...conn._tvExecutions] : [];
+            const trades = pairExecutions(execs);
+
+            allAccounts.push({
+              accountId: acc.name || acc.id,
+              balance,
+              trades,
+              orders: []
+            });
+          } catch(e) {}
         }
 
-        return { accountName, balance, trades, orders };
+        // Restaurar cuenta original
+        if (origAcc && conn && conn.setCurrentAccount) {
+          try { await conn.setCurrentAccount(origAcc); } catch(e) {}
+        }
+
+        return { accounts: allAccounts };
       } catch(e) {
         return { error: e.message };
       }
@@ -249,7 +246,7 @@ async function extractTradingViewData(port = 9222) {
         JSON.stringify({
           id: 2,
           method: "Runtime.evaluate",
-          params: { expression: extractorScript, returnByValue: true },
+          params: { expression: extractorScript, awaitPromise: true, returnByValue: true },
         })
       );
     };
@@ -318,17 +315,25 @@ async function main() {
     const token = await authenticate(config.email, config.password);
     const tvData = await extractTradingViewData();
 
-    console.log(`\n    · Cuenta detectada : ${tvData.accountName || "Apex"}`);
-    if (tvData.balance) {
-      console.log(`    · Saldo en cuenta   : $${tvData.balance.toLocaleString("es-ES")}`);
+    console.log("\nCuentas detectadas en TradingView Desktop:");
+    if (tvData.accounts && Array.isArray(tvData.accounts)) {
+      for (const a of tvData.accounts) {
+        console.log(`  · ${a.accountId}: $${a.balance?.toLocaleString("es-ES")} (${a.trades?.length || 0} operaciones)`);
+      }
+    } else if (tvData.accountName) {
+      console.log(`  · ${tvData.accountName}: $${tvData.balance?.toLocaleString("es-ES")} (${tvData.trades?.length || 0} operaciones)`);
     }
-    console.log(`    · Órdenes leídas    : ${tvData.orders?.length || 0}`);
     console.log("");
 
     const result = await uploadToStateTrading(config.appUrl, token, tvData);
 
     console.log("\n========================================================");
     console.log(` ✓ ${result.message || "¡Sincronización completada con éxito!"}`);
+    if (result.cuentas && Array.isArray(result.cuentas)) {
+      for (const c of result.cuentas) {
+        console.log(`   - ${c}`);
+      }
+    }
     console.log("========================================================\n");
   } catch (err) {
     console.error("\n❌ ERROR:", err.message);

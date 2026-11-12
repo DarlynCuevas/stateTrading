@@ -25,10 +25,11 @@ export async function POST(req: Request) {
 
     // 2. Extraer datos: si vienen en el body (desde script de escritorio) se usan directamente;
     // si no, se intenta extraer del TradingView local del servidor.
+    let body: any = null;
     let tvData: any = null;
     try {
-      const body = await req.json();
-      if (body && Array.isArray(body.orders)) {
+      body = await req.json();
+      if (body) {
         tvData = body;
       }
     } catch {
@@ -39,121 +40,120 @@ export async function POST(req: Request) {
       tvData = await extractTradingViewDesktopData();
     }
 
-    const hasTrades = tvData.trades && Array.isArray(tvData.trades) && tvData.trades.length > 0;
-    const hasOrders = tvData.orders && Array.isArray(tvData.orders) && tvData.orders.length > 0;
-
-    if (!hasTrades && !hasOrders) {
-      return NextResponse.json({
-        success: true,
-        message: "Conectado a TradingView Desktop, pero no hay órdenes ni operaciones recientes en el panel.",
-        ordersCount: 0,
-      });
-    }
-
     // Limpiar cuentas residuales generadas por ID de clearing de Tradovate (como D724... / Cuenta 88)
     await supabase.from("trades").delete().eq("user_id", user.id).like("account_id", "D724%");
     await supabase.from("trading_accounts").delete().eq("user_id", user.id).like("id", "D724%");
     await supabase.from("trading_accounts").delete().eq("user_id", user.id).eq("alias", "Cuenta (88)");
 
-    // 2. Determinar la cuenta real (ej. "APEX6339420000008")
-    let accountId = tvData.accountName || "APEX6339420000008";
-    if (accountId.startsWith("D724")) {
-      accountId = "APEX6339420000008";
-    }
+    // Soportar sincronización de múltiples cuentas simultáneas o de una cuenta individual
+    const accountsList = Array.isArray(body?.accounts) 
+      ? body.accounts 
+      : (Array.isArray(tvData?.accounts) ? tvData.accounts : [tvData]);
 
-    const ultimosDos = accountId.slice(-2);
-    const esFondeada = accountId.toLowerCase().includes("paapex");
-    const alias = esFondeada 
-      ? `Fondeada 50k (${ultimosDos})` 
-      : `Evaluación 25k (${ultimosDos})`;
+    let totalGuardadas = 0;
+    const cuentasProcesadas: string[] = [];
 
-    const saldoInicial = esFondeada ? 50000 : 25000;
-    const saldoActual = tvData.balance && tvData.balance > 0 ? tvData.balance : saldoInicial;
-
-    // Obtener cuenta existente para preservar nivel de liquidación y drawdown
-    const { data: existingAcc } = await supabase
-      .from("trading_accounts")
-      .select("*")
-      .eq("id", accountId)
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    const nivelLiq = existingAcc?.nivel_liquidacion != null 
-      ? Number(existingAcc.nivel_liquidacion)
-      : (saldoInicial - (esFondeada ? 2500 : 1500));
-    const distanciaDd = Number((saldoActual - nivelLiq).toFixed(2));
-
-    // Asegurar la cuenta en Supabase con saldo y distancia de drawdown actualizados
-    await supabase.from("trading_accounts").upsert({
-      id: accountId,
-      user_id: user.id,
-      alias: existingAcc?.alias || alias,
-      broker: existingAcc?.broker || "Apex / Tradovate",
-      tipo: esFondeada ? "fondeada" : "evaluacion",
-      tamano: saldoInicial,
-      saldo_inicial: saldoInicial,
-      saldo_actual: saldoActual,
-      nivel_liquidacion: nivelLiq,
-      distancia_drawdown: distanciaDd,
-      drawdown_tipo: existingAcc?.drawdown_tipo || "trailing",
-      drawdown_max: existingAcc?.drawdown_max || (esFondeada ? 2500 : 1500),
-      activa: true,
-      updated_at: new Date().toISOString(),
-    });
-
-    // 3. Guardar las operaciones en Supabase
-    let guardadas = 0;
-
-    // Si vienen operaciones cerradas emparejadas (trades reales con PnL), las guardamos preferentemente
-    if (tvData.trades && Array.isArray(tvData.trades) && tvData.trades.length > 0) {
-      for (const t of tvData.trades) {
-        await supabase.from("trades").upsert({
-          id: t.id,
-          account_id: accountId,
-          user_id: user.id,
-          real: true,
-          symbol: t.symbol,
-          type: t.type,
-          open_time: t.openTime,
-          close_time: t.closeTime,
-          entry_price: t.entryPrice,
-          exit_price: t.exitPrice,
-          quantity: t.quantity,
-          pnl: t.pnl,
-          commission: t.commission,
-          net_pnl: t.netPnl,
-          resultado: t.resultado,
-        });
-        guardadas++;
+    for (const accData of accountsList) {
+      if (!accData) continue;
+      let accountId = accData.accountId || accData.accountName || "APEX6339420000008";
+      if (accountId.startsWith("D724") || (accountId.startsWith("D") && !accountId.includes("APEX"))) {
+        // Ignorar si es sólo clearing sin mapeo
+        continue;
       }
-    } else if (tvData.orders && Array.isArray(tvData.orders)) {
-      for (const order of tvData.orders) {
-        await supabase.from("trades").upsert({
-          id: `TV-${order.id}`,
-          account_id: accountId,
-          user_id: user.id,
-          real: true,
-          symbol: order.symbol,
-          type: order.side,
-          open_time: order.time,
-          entry_price: order.price,
-          exit_price: order.price,
-          quantity: order.qty,
-          sl: order.stopLoss,
-          tp: order.takeProfit,
-          net_pnl: 0,
-          pnl: 0,
-          resultado: order.status === 2 || order.status === 6 ? "EJECUTADA" : "CANCELADA/PENDIENTE",
-        });
-        guardadas++;
+
+      const ultimosDos = accountId.slice(-2);
+      const esFondeada = accountId.toLowerCase().includes("paapex");
+      const alias = esFondeada 
+        ? `Fondeada 50k (${ultimosDos})` 
+        : `Evaluación 25k (${ultimosDos})`;
+
+      const saldoInicial = esFondeada ? 50000 : 25000;
+      const saldoActual = accData.balance && accData.balance > 0 ? accData.balance : saldoInicial;
+
+      // Obtener cuenta existente para preservar nivel de liquidación y drawdown
+      const { data: existingAcc } = await supabase
+        .from("trading_accounts")
+        .select("*")
+        .eq("id", accountId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const nivelLiq = existingAcc?.nivel_liquidacion != null 
+        ? Number(existingAcc.nivel_liquidacion)
+        : (saldoInicial - (esFondeada ? 2500 : 1500));
+      const distanciaDd = Number((saldoActual - nivelLiq).toFixed(2));
+
+      // Asegurar la cuenta en Supabase con saldo y distancia de drawdown actualizados
+      await supabase.from("trading_accounts").upsert({
+        id: accountId,
+        user_id: user.id,
+        alias: existingAcc?.alias || alias,
+        broker: existingAcc?.broker || "Apex / Tradovate",
+        tipo: esFondeada ? "fondeada" : "evaluacion",
+        tamano: saldoInicial,
+        saldo_inicial: saldoInicial,
+        saldo_actual: saldoActual,
+        nivel_liquidacion: nivelLiq,
+        distancia_drawdown: distanciaDd,
+        drawdown_tipo: existingAcc?.drawdown_tipo || "trailing",
+        drawdown_max: existingAcc?.drawdown_max || (esFondeada ? 2500 : 1500),
+        activa: true,
+        updated_at: new Date().toISOString(),
+      });
+
+      cuentasProcesadas.push(`${alias}: $${saldoActual.toLocaleString("es-ES")}`);
+
+      // 3. Guardar las operaciones en Supabase
+      if (accData.trades && Array.isArray(accData.trades) && accData.trades.length > 0) {
+        for (const t of accData.trades) {
+          await supabase.from("trades").upsert({
+            id: t.id,
+            account_id: accountId,
+            user_id: user.id,
+            real: true,
+            symbol: t.symbol,
+            type: t.type,
+            open_time: t.openTime,
+            close_time: t.closeTime,
+            entry_price: t.entryPrice,
+            exit_price: t.exitPrice,
+            quantity: t.quantity,
+            pnl: t.pnl,
+            commission: t.commission,
+            net_pnl: t.netPnl,
+            resultado: t.resultado,
+          });
+          totalGuardadas++;
+        }
+      } else if (accData.orders && Array.isArray(accData.orders)) {
+        for (const order of accData.orders) {
+          await supabase.from("trades").upsert({
+            id: `TV-${order.id}`,
+            account_id: accountId,
+            user_id: user.id,
+            real: true,
+            symbol: order.symbol,
+            type: order.side,
+            open_time: order.time,
+            entry_price: order.price,
+            exit_price: order.price,
+            quantity: order.qty,
+            sl: order.stopLoss,
+            tp: order.takeProfit,
+            net_pnl: 0,
+            pnl: 0,
+            resultado: order.status === 2 || order.status === 6 ? "EJECUTADA" : "CANCELADA/PENDIENTE",
+          });
+          totalGuardadas++;
+        }
       }
     }
 
     return NextResponse.json({
       success: true,
-      message: `¡Sincronización exitosa desde TradingView Desktop! ${guardadas} operaciones guardadas.`,
-      ordersCount: guardadas,
-      account: accountId,
+      message: `¡Sincronización multi-cuenta exitosa! ${totalGuardadas} operaciones registradas en ${cuentasProcesadas.length} cuentas.`,
+      ordersCount: totalGuardadas,
+      cuentas: cuentasProcesadas,
     });
   } catch (err: any) {
     console.error("[TV Desktop Sync Error]:", err);
