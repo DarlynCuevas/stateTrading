@@ -334,15 +334,22 @@ export function TradesTable({ trades }: TradesTableProps) {
                       {t.quantity ? t.quantity.toLocaleString("en-US") : "-"}
                     </td>
                     <td className="p-3.5 text-right font-mono font-bold whitespace-nowrap">
-                      <span
-                        className={`inline-flex items-center gap-0.5 px-2.5 py-1 rounded-md ${
-                          isPositive
-                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                            : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                        }`}
-                      >
-                        {isPositive ? "+" : ""}${t.netPnl.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
+                      <div className="flex flex-col items-end">
+                        <span
+                          className={`inline-flex items-center gap-0.5 px-2.5 py-1 rounded-md ${
+                            isPositive
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                              : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                          }`}
+                        >
+                          {isPositive ? "+$" : "-$"}{Math.abs(t.netPnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                        {t.commission !== undefined && t.commission > 0 && (
+                          <span className="text-[10px] text-slate-400 font-normal mt-0.5">
+                            Com: -${t.commission.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

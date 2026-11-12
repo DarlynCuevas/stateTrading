@@ -64,7 +64,7 @@ export function KpiCards({ stats }: KpiCardsProps) {
           </div>
           <div>
             <div className={`text-2xl font-bold font-mono tracking-tight flex items-center gap-1 ${isPnlPositive ? "text-emerald-500" : "text-rose-500"}`}>
-              {isPnlPositive ? "+" : ""}${stats.totalNetPnl.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {isPnlPositive ? "+$" : "-$"}{Math.abs(stats.totalNetPnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className="flex items-center gap-1 mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
               {isPnlPositive ? <ArrowUpRight className="h-3 w-3 text-emerald-500" /> : <ArrowDownRight className="h-3 w-3 text-rose-500" />}
@@ -127,7 +127,7 @@ export function KpiCards({ stats }: KpiCardsProps) {
           </div>
           <div>
             <div className={`text-2xl font-bold font-mono tracking-tight ${isAvgPositive ? "text-emerald-500" : "text-rose-500"}`}>
-              {isAvgPositive ? "+" : ""}${stats.averageTrade.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {isAvgPositive ? "+$" : "-$"}{Math.abs(stats.averageTrade).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div className="flex items-center gap-1 mt-1 text-[11px] text-slate-500 dark:text-slate-400 font-medium">
               <span>Esperanza matemática por trade</span>
@@ -193,7 +193,7 @@ export function KpiCards({ stats }: KpiCardsProps) {
           <div>
             <div className="flex items-center justify-between font-mono text-sm font-bold">
               <span className="text-emerald-500">+${(stats.largestWin || 0).toFixed(2)}</span>
-              <span className="text-rose-500">${(stats.largestLoss || 0).toFixed(2)}</span>
+              <span className="text-rose-500">-${Math.abs(stats.largestLoss || 0).toFixed(2)}</span>
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex justify-between">
               <span>Mejor Trade</span>
@@ -214,7 +214,7 @@ export function KpiCards({ stats }: KpiCardsProps) {
           </div>
           <div>
             <div className={`text-xl font-bold font-mono tracking-tight ${(stats.expectancy || 0) >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
-              {(stats.expectancy || 0) >= 0 ? "+" : ""}${(stats.expectancy || 0).toFixed(2)}
+              {(stats.expectancy || 0) >= 0 ? "+$" : "-$"}{Math.abs(stats.expectancy || 0).toFixed(2)}
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
               Beneficio esperado por trade

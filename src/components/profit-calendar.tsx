@@ -114,7 +114,7 @@ export function ProfitCalendar({ trades }: ProfitCalendarProps) {
           <div className="flex items-center gap-1.5">
             <span className="text-slate-500 dark:text-slate-400">PnL del mes:</span>
             <span className={`font-bold font-mono ${monthStats.totalPnl >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
-              {monthStats.totalPnl >= 0 ? "+" : ""}${monthStats.totalPnl.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {monthStats.totalPnl >= 0 ? "+$" : "-$"}{Math.abs(monthStats.totalPnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -163,7 +163,9 @@ export function ProfitCalendar({ trades }: ProfitCalendarProps) {
                     : hasTrades
                     ? isPositive
                       ? "border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/40 dark:bg-emerald-950/20 hover:border-emerald-300 dark:hover:border-emerald-700/60"
-                      : "border-rose-200/60 dark:border-rose-800/40 bg-rose-50/40 dark:bg-rose-950/20 hover:border-rose-300 dark:hover:border-rose-700/60"
+                      : isNegative
+                      ? "border-rose-200/60 dark:border-rose-800/40 bg-rose-50/40 dark:bg-rose-950/20 hover:border-rose-300 dark:hover:border-rose-700/60"
+                      : "border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/50"
                     : isWeekend
                     ? "border-slate-100 dark:border-slate-800/50 bg-slate-50/30 dark:bg-slate-900/40"
                     : "border-slate-150 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-slate-200 dark:hover:border-slate-700"
@@ -189,10 +191,14 @@ export function ProfitCalendar({ trades }: ProfitCalendarProps) {
                       <>
                         <span
                           className={`text-sm font-bold font-mono leading-tight ${
-                            isPositive ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                            isPositive
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : isNegative
+                              ? "text-rose-600 dark:text-rose-400"
+                              : "text-slate-600 dark:text-slate-400"
                           }`}
                         >
-                          {isPositive ? "+" : ""}${Math.abs(day.pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {isPositive ? "+$" : isNegative ? "-$" : "$"}{Math.abs(day.pnl).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                         <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                           {day.tradesCount} {day.tradesCount === 1 ? "trade" : "trades"}
@@ -213,7 +219,9 @@ export function ProfitCalendar({ trades }: ProfitCalendarProps) {
                       className={`h-[3px] rounded-full w-full ${
                         isPositive
                           ? "bg-emerald-500 dark:bg-emerald-400"
-                          : "bg-rose-500 dark:bg-rose-400"
+                          : isNegative
+                          ? "bg-rose-500 dark:bg-rose-400"
+                          : "bg-slate-400 dark:bg-slate-500"
                       }`}
                     />
                   </div>

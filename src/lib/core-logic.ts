@@ -70,6 +70,56 @@ export function parseDurationToMinutes(val: string | number | undefined | null):
 }
 
 /**
+ * Parsea fechas de forma segura tolerando múltiples formatos:
+ * - Tradovate (MM/DD/YYYY HH:mm:ss)
+ * - TradingView español (DD/MM/YYYY HH:mm:ss)
+ * - Formatos ISO / estándar (YYYY-MM-DD...)
+ */
+export function parseSafeDate(val: string | number | Date | undefined | null): Date {
+  if (!val) return new Date();
+  if (val instanceof Date) return isNaN(val.getTime()) ? new Date() : val;
+  if (typeof val === "number") return new Date(val);
+
+  const str = String(val).trim();
+  if (!str || str === "Sin fecha") return new Date();
+
+  // Detectar formato con barras (ej: 08/03/2026 11:50:16 o 25/08/2026 11:50:16)
+  const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (slashMatch) {
+    const p1 = parseInt(slashMatch[1], 10);
+    const p2 = parseInt(slashMatch[2], 10);
+    const year = parseInt(slashMatch[3], 10);
+    const hours = slashMatch[4] ? parseInt(slashMatch[4], 10) : 0;
+    const minutes = slashMatch[5] ? parseInt(slashMatch[5], 10) : 0;
+    const seconds = slashMatch[6] ? parseInt(slashMatch[6], 10) : 0;
+
+    let month = p1;
+    let day = p2;
+
+    if (p1 > 12) {
+      // Es formato DD/MM/YYYY
+      day = p1;
+      month = p2;
+    } else if (p2 > 12) {
+      // Es formato MM/DD/YYYY
+      month = p1;
+      day = p2;
+    } else {
+      // En brokers de futuros US (Tradovate), el formato por defecto es MM/DD/YYYY
+      month = p1;
+      day = p2;
+    }
+
+    return new Date(year, month - 1, day, hours, minutes, seconds);
+  }
+
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) return d;
+
+  return new Date();
+}
+
+/**
  * Parsea el CSV exportado de TradingView, soportando de forma flexible:
  * - Histórico de saldo (donde la info viene en "PyG realizadas (valor)" y "Acción")
  * - Histórico de órdenes (con comisiones y precios de ejecución)
@@ -87,21 +137,24 @@ export function parseTradingViewCsv(rows: RawTradingViewRow[]): ParsedTrade[] {
       const buyTimeStr = String(row["boughtTimestamp"]).trim();
       const sellTimeStr = String(row["soldTimestamp"]).trim();
       
-      const buyDate = new Date(buyTimeStr);
-      const sellDate = new Date(sellTimeStr);
+      const buyDate = parseSafeDate(buyTimeStr);
+      const sellDate = parseSafeDate(sellTimeStr);
       const buyTime = buyDate.getTime();
       const sellTime = sellDate.getTime();
       
       let type = "TRADE";
       let openTime = buyTimeStr;
+      let closeTime = sellTimeStr;
       
       if (!isNaN(buyTime) && !isNaN(sellTime)) {
         if (buyTime > sellTime) {
           type = "SHORT (VENTA)";
           openTime = sellTimeStr;
+          closeTime = buyTimeStr;
         } else {
           type = "LONG (COMPRA)";
           openTime = buyTimeStr;
+          closeTime = sellTimeStr;
         }
       }
 
@@ -120,6 +173,7 @@ export function parseTradingViewCsv(rows: RawTradingViewRow[]): ParsedTrade[] {
         symbol: String(row["symbol"] || "TRADE").trim(),
         type,
         openTime,
+        closeTime,
         entryPrice,
         exitPrice,
         pnl: netPnl, // netPnl actually holds Gross PnL from the raw row in Tradovate
@@ -323,9 +377,8 @@ export function parseTradingViewCsv(rows: RawTradingViewRow[]): ParsedTrade[] {
 
   // Ordenar cronológicamente (más antiguo primero) para que el equity curve y KPIs tengan coherencia temporal
   const sorted = trades.sort((a, b) => {
-    const timeA = new Date(a.openTime).getTime();
-    const timeB = new Date(b.openTime).getTime();
-    if (isNaN(timeA) || isNaN(timeB)) return 0;
+    const timeA = parseSafeDate(a.openTime).getTime();
+    const timeB = parseSafeDate(b.openTime).getTime();
     return timeA - timeB;
   });
 
@@ -735,8 +788,7 @@ export function generateCalendarData(
   const tradesByDate: Record<string, { pnl: number; count: number; wins: number; losses: number }> = {};
   trades.forEach((t) => {
     try {
-      const d = new Date(t.openTime);
-      if (isNaN(d.getTime())) return;
+      const d = parseSafeDate(t.openTime);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       if (!tradesByDate[key]) {
         tradesByDate[key] = { pnl: 0, count: 0, wins: 0, losses: 0 };
@@ -821,35 +873,29 @@ export function generateCalendarData(
 }
 
 /**
- * Auto-detecta el mes más frecuente en los trades para inicializar el calendario.
+ * Auto-detecta el mes más reciente de los trades para inicializar el calendario.
  */
 export function detectTradesMonth(trades: ParsedTrade[]): { year: number; month: number } {
   const now = new Date();
   if (!trades || trades.length === 0) return { year: now.getFullYear(), month: now.getMonth() };
 
-  const monthCounts: Record<string, number> = {};
+  // Buscar la fecha de trade más reciente
+  let latestDate: Date | null = null;
   trades.forEach((t) => {
     try {
-      const d = new Date(t.openTime);
-      if (isNaN(d.getTime())) return;
-      const key = `${d.getFullYear()}-${d.getMonth()}`;
-      monthCounts[key] = (monthCounts[key] || 0) + 1;
+      const d = parseSafeDate(t.openTime);
+      if (!latestDate || d.getTime() > latestDate.getTime()) {
+        latestDate = d;
+      }
     } catch {
       // skip
     }
   });
 
-  let maxKey = `${now.getFullYear()}-${now.getMonth()}`;
-  let maxCount = 0;
-  Object.entries(monthCounts).forEach(([key, count]) => {
-    if (count > maxCount) {
-      maxCount = count;
-      maxKey = key;
-    }
-  });
-
-  const [yearStr, monthStr] = maxKey.split("-");
-  return { year: parseInt(yearStr), month: parseInt(monthStr) };
+  if (latestDate) {
+    return { year: (latestDate as Date).getFullYear(), month: (latestDate as Date).getMonth() };
+  }
+  return { year: now.getFullYear(), month: now.getMonth() };
 }
 
 /**
@@ -1118,8 +1164,7 @@ export function generatePeriodSummaries(
   > = {};
 
   trades.forEach((t) => {
-    let d = new Date(t.openTime);
-    if (isNaN(d.getTime())) d = new Date();
+    const d = parseSafeDate(t.openTime);
 
     let periodId = "";
     let label = "";

@@ -40,6 +40,7 @@ interface PerformanceChartsProps {
   symbolData?: SymbolPerformance[];
   pnlDistribution?: PnlDistributionBucket[];
   hourlyData?: HourlyPerformance[];
+  initialBalance?: number;
 }
 
 export function PerformanceCharts({
@@ -48,6 +49,7 @@ export function PerformanceCharts({
   symbolData = [],
   pnlDistribution = [],
   hourlyData = [],
+  initialBalance = 50000,
 }: PerformanceChartsProps) {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
@@ -64,9 +66,9 @@ export function PerformanceCharts({
   const tooltipBg = isDark ? "#0f172a" : "#ffffff";
   const tooltipBorder = isDark ? "#334155" : "#e2e8f0";
 
-  // Determinar si el balance final está en verde o en rojo respecto a 50k
-  const finalBalance = equityData.length > 0 ? equityData[equityData.length - 1].balance : 50000;
-  const isEquityPositive = finalBalance >= 50000;
+  // Determinar si el balance final está en verde o en rojo respecto al capital inicial
+  const finalBalance = equityData.length > 0 ? equityData[equityData.length - 1].balance : initialBalance;
+  const isEquityPositive = finalBalance >= initialBalance;
   const strokeColor = isEquityPositive ? "#10b981" : "#f43f5e"; // emerald-500 vs rose-500
 
   if (!mounted) {
@@ -91,7 +93,7 @@ export function PerformanceCharts({
                 <span>Equity Curve (Evolución del Saldo)</span>
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Progresión trade a trade desde el capital inicial ($50,000)
+                Progresión trade a trade desde el capital inicial (${initialBalance.toLocaleString("en-US")})
               </p>
             </div>
             <div className="text-right">

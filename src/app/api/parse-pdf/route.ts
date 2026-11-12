@@ -18,17 +18,20 @@ export async function POST(req: Request) {
     const { text } = await extractText(pdf, { mergePages: true });
 
     // ── 1. Extract Total Trade Fees & Comm ──
-    // e.g. "Trade Fees & Comm. $(25.06)"
-    const feesMatch = text.match(/Trade Fees & Comm\.?\s*\$\(([\d.]+)\)/i) || text.match(/Trade Fees & Comm\.?\s*-\$([\d.]+)/i);
+    // e.g. "Trade Fees & Comm. $(25.06)" or "Trade Fees & Comm. $(1,250.00)"
+    const feesMatch = text.match(/Trade Fees & Comm\.?\s*\$\(([\d.,]+)\)/i) || 
+                      text.match(/Trade Fees & Comm\.?\s*-\$([\d.,]+)/i) ||
+                      text.match(/Trade Fees & Comm\.?\s*\$([\d.,]+)/i);
     let totalFees = 0;
     if (feesMatch) {
-      totalFees = parseFloat(feesMatch[1]); // Absolute value
+      totalFees = parseFloat(feesMatch[1].replace(/,/g, '')); // Absolute value
     }
 
     // ── 2. Extract all trades (WITHOUT commission yet) ──
     // Pattern: Symbol Qty BuyPrice BuyDateTime Duration SellDateTime SellPrice P&L
-    const tradeRegex = /([A-Z0-9]+)\s+(\d+)\s+([\d.]+)\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})\s+((?:\d+[a-z]+\s*)*)\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})\s+([\d.]+)\s+(\$[\d.]+|\$\([\d.]+\)|-\$[\d.]+)/gi;
-    
+    // Soportar duraciones vacías (ejecuciones instantáneas) y saltos de línea (\s*[\s\S]*?\s*)
+    const tradeRegex = /([A-Z0-9]+)\s+(\d+)\s+([\d.,]+)\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})\s*([\s\S]*?)\s*(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2})\s+([\d.,]+)\s+(\$[\d.,]+|\$\([\d.,]+\)|-\$[\d.,]+)/gi;
+
     interface RawTradeRow {
       symbol: string;
       qty: number;
@@ -49,7 +52,7 @@ export async function POST(req: Request) {
         qty: parseInt(match[2], 10),
         buyPrice: match[3],
         boughtTimestamp: match[4],
-        duration: match[5].trim(),
+        duration: match[5].replace(/\s+/g, ' ').trim(),
         soldTimestamp: match[6],
         sellPrice: match[7],
         pnl: match[8],
