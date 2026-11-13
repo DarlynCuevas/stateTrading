@@ -67,9 +67,12 @@ export async function POST(req: Request) {
 
     for (const accData of accountsList) {
       if (!accData) continue;
-      let accountId = accData.accountId || accData.accountName || "APEX6339420000008";
-      if (accountId.startsWith("D724") || (accountId.startsWith("D") && !accountId.includes("APEX"))) {
-        // Ignorar si es sólo clearing sin mapeo
+      let accountId = accData.accountId || accData.accountName || accData.account || accData.id;
+      if (!accountId) continue;
+      accountId = String(accountId).trim();
+
+      // Ignorar únicamente identificadores residuales de clearing house de Tradovate
+      if (accountId.startsWith("D724") || accountId === "Cuenta (88)") {
         continue;
       }
 
@@ -90,17 +93,23 @@ export async function POST(req: Request) {
         .eq("user_id", user.id)
         .maybeSingle();
 
+      // Drawdown máximo por defecto: 1000 en evaluación 25k (o 2500 en fondeada 50k)
+      const defaultDrawdownMax = esFondeada ? 2500 : 1000;
+      const maxDd = existingAcc?.drawdown_max != null 
+        ? Number(existingAcc.drawdown_max) 
+        : defaultDrawdownMax;
+
       // Nivel de liquidación y colchón de drawdown
       const nivelLiq = existingAcc?.nivel_liquidacion != null 
         ? Number(existingAcc.nivel_liquidacion)
-        : (saldoInicial - (esFondeada ? 2500 : 1500));
+        : (saldoInicial - maxDd);
       const distanciaDd = Number((saldoActual - nivelLiq).toFixed(2));
 
-      // Auto-detección de cuenta quemada por violación de Drawdown
-      const drawdownBreached = distanciaDd <= 0 || (saldoActual < nivelLiq);
-      const isActiva = existingAcc?.activa != null 
-        ? (drawdownBreached ? false : existingAcc.activa)
-        : !drawdownBreached;
+      // Auto-detección de cuenta quemada por violación de Drawdown (distancia <= 0, o caída de 1000€ en 25k)
+      const drawdownBreached = distanciaDd <= 0 || (saldoActual <= nivelLiq) || ((saldoInicial - saldoActual) >= maxDd);
+      const isActiva = existingAcc?.activa === false 
+        ? false 
+        : (drawdownBreached ? false : (existingAcc?.activa ?? true));
 
       // Asegurar la cuenta en Supabase con saldo y distancia de drawdown actualizados
       // IMPORTANTE: No incluir 'estado' ya que la columna no existe en el esquema Postgres de trading_accounts.

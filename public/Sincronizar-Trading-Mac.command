@@ -16,7 +16,11 @@ if ! command -v node &> /dev/null; then
     exit 1
 fi
 
-# 2. Si falta sync-agent.mjs en la carpeta, descargarlo
+# 2. Descargar o actualizar sync-agent.mjs desde la web
+curl -s -f -o "sync-agent.mjs.new" "https://state-trading-lake.vercel.app/sync-agent.mjs" 2>/dev/null
+if [ -f "sync-agent.mjs.new" ]; then
+    mv -f "sync-agent.mjs.new" "sync-agent.mjs"
+fi
 if [ ! -f "sync-agent.mjs" ]; then
     echo "Descargando motor de sincronización..."
     curl -s -f -o "sync-agent.mjs" "https://state-trading-lake.vercel.app/sync-agent.mjs"

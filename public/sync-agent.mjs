@@ -178,9 +178,14 @@ async function extractTradingViewData(port = 9222) {
           return trades;
         }
 
-        const accountsToScan = (conn && conn._accounts && conn._accounts.length > 0)
+        let accountsToScan = (conn && conn._accounts && conn._accounts.length > 0)
           ? conn._accounts
-          : [{ id: broker.currentAccount ? broker.currentAccount() : 'default', name: 'APEX' }];
+          : (broker.accounts && typeof broker.accounts === 'function' ? broker.accounts() : (broker._accounts || []));
+
+        if (!accountsToScan || accountsToScan.length === 0) {
+          const cur = broker.currentAccount ? broker.currentAccount() : 'default';
+          accountsToScan = [{ id: cur, name: cur }];
+        }
 
         const origAcc = broker.currentAccount ? broker.currentAccount() : null;
         const allAccounts = [];
@@ -192,6 +197,18 @@ async function extractTradingViewData(port = 9222) {
             }
             // Esperar 2.5s para que TradingView cargue saldos y ejecuciones de esta cuenta
             await new Promise(r => setTimeout(r, 2500));
+
+            // Extraer nombre real de la cuenta
+            let finalName = acc.name || acc.accountName || acc.title || "";
+            if (!finalName || (typeof finalName === 'string' && finalName.startsWith("D724"))) {
+              const domName = document.querySelector('[data-qa-id="account-selector"] [class*="accountName"]')?.textContent?.trim() ||
+                              document.querySelector('[class*="accountName"]')?.textContent?.trim();
+              if (domName && !domName.startsWith("D724")) {
+                finalName = domName;
+              } else {
+                finalName = String(acc.id || "APEX");
+              }
+            }
 
             // Leer saldo (netLiq)
             let balance = 0;
@@ -213,11 +230,24 @@ async function extractTradingViewData(port = 9222) {
               }
             }
 
-            const execs = conn._tvExecutions ? [...conn._tvExecutions] : [];
+            // FILTRADO ESTRICTO DE EJECUCIONES POR CUENTA:
+            // Cada trade debe pertenecer exclusivamente a la cuenta en la que se ejecutó
+            const accIdStr = String(acc.id || "");
+            const finalNameStr = String(finalName || "");
+            const allExecs = (conn && conn._tvExecutions) ? [...conn._tvExecutions] : [];
+            const execs = allExecs.filter(e => {
+              if (accountsToScan.length === 1) return true;
+              const eAccId = String(e.accountId || e.account || "");
+              const eAccName = String(e.accountName || e.account || "");
+              if (eAccId && (eAccId === accIdStr || eAccId === finalNameStr)) return true;
+              if (eAccName && (eAccName === finalNameStr || eAccName === accIdStr)) return true;
+              return false;
+            });
+
             const trades = pairExecutions(execs);
 
             allAccounts.push({
-              accountId: acc.name || acc.id,
+              accountId: finalName,
               balance,
               trades,
               orders: []
@@ -331,14 +361,15 @@ async function main() {
       }
     }
     console.log("========================================================");
-    console.log(" 💡 Sincronización continua activa (cada 60 segundos).");
+    console.log(" 💡 Sincronización continua activa (cada 1 hora).");
     console.log("    Puedes MINIMIZAR esta ventana y seguir operando.");
     console.log("    (Para detener el sincronizador, cierra esta ventana).");
     console.log("========================================================\n");
 
-    // Bucle de sincronización periódica en segundo plano
+    // Bucle de sincronización periódica en segundo plano (cada 1 hora)
+    const SYNC_INTERVAL_MS = 60 * 60 * 1000;
     while (true) {
-      await new Promise((r) => setTimeout(r, 60000));
+      await new Promise((r) => setTimeout(r, SYNC_INTERVAL_MS));
       const now = new Date().toLocaleTimeString();
       process.stdout.write(`[${now}] Sincronizando TradingView... `);
       try {

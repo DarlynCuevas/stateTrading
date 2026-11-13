@@ -18,18 +18,16 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: 2. Si falta sync-agent.mjs en la carpeta, descargarlo automaticamente de la web
+:: 2. Actualizar o descargar sync-agent.mjs desde la web
+curl -s -f -o "%~dp0sync-agent.mjs.new" "https://state-trading-lake.vercel.app/sync-agent.mjs"
+if exist "%~dp0sync-agent.mjs.new" (
+    move /y "%~dp0sync-agent.mjs.new" "%~dp0sync-agent.mjs" >nul
+)
 if not exist "%~dp0sync-agent.mjs" (
-    echo [*] Descargando motor de sincronizacion...
-    curl -s -f -o "%~dp0sync-agent.mjs" "https://state-trading-lake.vercel.app/sync-agent.mjs"
-    if not exist "%~dp0sync-agent.mjs" (
-        echo [X] No se pudo descargar sync-agent.mjs.
-        echo Asegurate de tener conexion a Internet o de colocar sync-agent.mjs junto a este archivo.
-        pause
-        exit /b 1
-    )
-    echo [OK] Motor descargado correctamente.
-    echo.
+    echo [X] No se pudo descargar sync-agent.mjs.
+    echo Asegurate de tener conexion a Internet o de colocar sync-agent.mjs junto a este archivo.
+    pause
+    exit /b 1
 )
 
 :: 3. Comprobar si TradingView esta respondiendo en el puerto 9222

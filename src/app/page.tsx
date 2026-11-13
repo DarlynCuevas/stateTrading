@@ -219,6 +219,16 @@ export default function Home() {
     if (a.nivelLiquidacion != null && a.balance != null && a.balance > 0 && a.balance <= a.nivelLiquidacion) {
       return true;
     }
+    // Cuentas de evaluación de 25k quemadas si han perdido 1000 o más
+    if (a.balanceInicial === 25000 && a.balance != null && a.balance > 0 && (a.balanceInicial - a.balance >= 1000)) {
+      return true;
+    }
+    // Si la pérdida acumulada supera el drawdown máximo configurado
+    if (a.reglas?.drawdownMax != null && a.balanceInicial != null && a.balance != null && a.balance > 0) {
+      if (a.balanceInicial - a.balance >= a.reglas.drawdownMax) {
+        return true;
+      }
+    }
     return false;
   }, []);
 
