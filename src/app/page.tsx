@@ -50,6 +50,9 @@ import { SyncDesktopModal } from "@/components/sync-desktop-modal";
 import { ChangePasswordModal } from "@/components/change-password-modal";
 import { AccountsManager } from "@/components/accounts-manager";
 import { PropFirmGuardian } from "@/components/prop-firm-guardian";
+import { EconomicNewsPill } from "@/components/economic-news-pill";
+import { PreMarketRoutine } from "@/components/pre-market-routine";
+import { SweetSpotHeatmap } from "@/components/sweet-spot-heatmap";
 
 // ─── Convierte una Operation del JSON a ParsedTrade para los gráficos/stats ───
 function operationToParsedTrade(op: Operation): ParsedTrade {
@@ -455,6 +458,19 @@ export default function Home() {
     return { total, byAccount };
   }, [filteredOps]);
 
+  // ─── Operaciones y PnL de Hoy (para el Pre-Mercado & Rutina) ─────
+  const todayDateStr = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const todayOps = React.useMemo(() => {
+    return filteredOps.filter((op) => {
+      const time = op.closeTime || op.openTime;
+      return time && time.slice(0, 10) === todayDateStr;
+    });
+  }, [filteredOps, todayDateStr]);
+
+  const todayPnl = React.useMemo(() => {
+    return todayOps.reduce((sum, op) => sum + (op.netPnl ?? op.pnl ?? 0), 0);
+  }, [todayOps]);
+
   // ─── Auth loading ─────────────────────────────────────────────────
   if (authChecking) {
     return (
@@ -843,6 +859,7 @@ export default function Home() {
                 </optgroup>
               )}
             </select>
+            <EconomicNewsPill />
             <ThemeToggle />
             <button
               onClick={() => setShowChangePasswordModal(true)}
@@ -894,6 +911,9 @@ export default function Home() {
           {/* ─── TAB: DASHBOARD ─── */}
           {activeTab === "dashboard" && (
             <div className="space-y-8 animate-fadeIn">
+
+              {/* Rutina Pre-Mercado & Plan del Día */}
+              <PreMarketRoutine todayOperations={todayOps} todayPnl={todayPnl} />
 
               {/* Mini Widget Guardián de Fondeo */}
               {activeAccounts.length > 0 && (
@@ -1132,6 +1152,11 @@ export default function Home() {
                 </button>
               </div>
               <PeriodReview trades={parsedTrades} />
+
+              {/* Matriz de Rentabilidad Horaria (Sweet Spot) */}
+              <div className="pt-2">
+                <SweetSpotHeatmap trades={parsedTrades} />
+              </div>
             </section>
           )}
 
