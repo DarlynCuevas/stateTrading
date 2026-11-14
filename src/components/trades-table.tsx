@@ -163,23 +163,9 @@ export function TradesTable({
     sortDirection,
   ]);
 
-  // Reseteo de página al cambiar filtros
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    searchQuery,
-    selectedSymbol,
-    selectedSide,
-    selectedResult,
-    selectedSetup,
-    selectedDiscipline,
-    sortColumn,
-    sortDirection,
-    trades.length,
-  ]);
-
-  const totalPages = Math.ceil(filteredAndSortedTrades.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedTrades.length / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
   const currentTrades = filteredAndSortedTrades.slice(startIndex, startIndex + itemsPerPage);
 
   const toggleSort = (col: SortColumn) => {
@@ -630,18 +616,18 @@ export function TradesTable({
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
+                disabled={safeCurrentPage === 1}
                 className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Página anterior"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <span className="px-3 py-1 text-xs font-mono font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-700 dark:text-slate-200">
-                {currentPage} / {totalPages}
+                {safeCurrentPage} / {totalPages}
               </span>
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
+                disabled={safeCurrentPage === totalPages}
                 className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 aria-label="Página siguiente"
               >
