@@ -52,15 +52,15 @@ export interface Operation {
   netPnl?: number | null;
   plan?: OperationPlan;
   rMultiple?: number | null;
-  resultado?: string;
+  resultado?: string | null;
   sesion?: string | null;
-  setup?: string;
+  setup?: string | null;
   auditor?: string | null;
   errores?: string[];
   aciertos?: string[];
-  leccion?: string;
+  leccion?: string | null;
   captura?: string | null;
-  pendiente?: string;
+  pendiente?: string | null;
 }
 
 interface RawAccount {

@@ -19,7 +19,13 @@ import {
   generateHourlyPerformance,
 } from "@/lib/core-logic";
 import { getAuditData, Operation, Account } from "@/lib/operations";
-import { getTeamMembers, loadUserDataFromSupabase, syncLocalStateToSupabase, UserProfile } from "@/lib/team-sync";
+import {
+  getTeamMembers,
+  loadUserDataFromSupabase,
+  syncLocalStateToSupabase,
+  updateTradeJournalInSupabase,
+  UserProfile,
+} from "@/lib/team-sync";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 import {
@@ -54,6 +60,7 @@ function operationToParsedTrade(op: Operation): ParsedTrade {
 
   return {
     id: op.id,
+    cuentaId: op.cuentaId,
     symbol: op.symbol || "UNKNOWN",
     type: op.type || "COMPRA",
     openTime: op.openTime || new Date().toISOString(),
@@ -65,6 +72,17 @@ function operationToParsedTrade(op: Operation): ParsedTrade {
     netPnl: netPnl,
     quantity: typeof op.quantity === "number" ? op.quantity : 1,
     holdingTimeMinutes,
+    sl: op.plan?.sl,
+    tp: op.plan?.tp,
+    riesgoUsd: op.plan?.riesgoUsd,
+    rMultiple: op.rMultiple,
+    resultado: op.resultado,
+    sesion: op.sesion,
+    setup: op.setup,
+    errores: op.errores || [],
+    aciertos: op.aciertos || [],
+    leccion: op.leccion,
+    captura: op.captura,
   };
 }
 
@@ -103,6 +121,42 @@ export default function Home() {
     } finally {
       setSyncingTV(false);
       setTimeout(() => setSyncStatus(null), 3000);
+    }
+  };
+
+  const handleUpdateTrade = async (
+    tradeId: string,
+    updates: Partial<ParsedTrade>
+  ) => {
+    setAuditData((prev) => {
+      const updatedOps = prev.operations.map((op) => {
+        if (op.id !== tradeId) return op;
+        return {
+          ...op,
+          setup: updates.setup !== undefined ? updates.setup : op.setup,
+          sesion: updates.sesion !== undefined ? updates.sesion : op.sesion,
+          resultado: updates.resultado !== undefined ? updates.resultado : op.resultado,
+          rMultiple: updates.rMultiple !== undefined ? updates.rMultiple : op.rMultiple,
+          errores: updates.errores !== undefined ? updates.errores : op.errores,
+          aciertos: updates.aciertos !== undefined ? updates.aciertos : op.aciertos,
+          leccion: updates.leccion !== undefined ? updates.leccion : op.leccion,
+          captura: updates.captura !== undefined ? updates.captura : op.captura,
+          plan: {
+            ...op.plan,
+            sl: updates.sl !== undefined ? updates.sl : op.plan?.sl,
+            tp: updates.tp !== undefined ? updates.tp : op.plan?.tp,
+            riesgoUsd: updates.riesgoUsd !== undefined ? updates.riesgoUsd : op.plan?.riesgoUsd,
+          },
+        };
+      });
+      return {
+        ...prev,
+        operations: updatedOps,
+      };
+    });
+
+    if (user?.id) {
+      await updateTradeJournalInSupabase(tradeId, user.id, updates);
     }
   };
 
@@ -982,7 +1036,12 @@ export default function Home() {
                     <ArrowRight className="h-3 w-3" />
                   </button>
                 </div>
-                <TradesTable trades={parsedTrades.slice(0, 5)} />
+                <TradesTable
+                  trades={parsedTrades.slice(0, 5)}
+                  onUpdateTrade={handleUpdateTrade}
+                  accountMap={auditData.accountMap}
+                  showDisciplineSummary={false}
+                />
               </section>
             </div>
           )}
@@ -1037,7 +1096,12 @@ export default function Home() {
                   Volver a Dashboard
                 </button>
               </div>
-              <TradesTable trades={parsedTrades} />
+              <TradesTable
+                trades={parsedTrades}
+                onUpdateTrade={handleUpdateTrade}
+                accountMap={auditData.accountMap}
+                showDisciplineSummary={true}
+              />
             </section>
           )}
 

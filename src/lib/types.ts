@@ -4,6 +4,8 @@ export interface RawTradingViewRow {
 
 export interface ParsedTrade {
   id: string;
+  cuentaId?: string | null;
+  accountName?: string;
   symbol: string;
   type: 'BUY' | 'SELL' | 'COMPRA' | 'VENTA' | string;
   openTime: string;
@@ -15,6 +17,17 @@ export interface ParsedTrade {
   netPnl: number;
   quantity?: number;
   holdingTimeMinutes?: number;
+  sl?: number | null;
+  tp?: number | null;
+  riesgoUsd?: number | null;
+  rMultiple?: number | null;
+  resultado?: string | null;
+  sesion?: string | null;
+  setup?: string | null;
+  errores?: string[];
+  aciertos?: string[];
+  leccion?: string | null;
+  captura?: string | null;
   raw?: RawTradingViewRow;
 }
 

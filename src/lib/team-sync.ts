@@ -290,3 +290,56 @@ export async function updateAccountStatus(
     return { success: false, error: err.message };
   }
 }
+
+/**
+ * Actualiza los campos de journaling y auditoría de un trade en Supabase
+ */
+export async function updateTradeJournalInSupabase(
+  tradeId: string,
+  userId: string,
+  updates: {
+    setup?: string | null;
+    sesion?: string | null;
+    resultado?: string | null;
+    sl?: number | null;
+    tp?: number | null;
+    riesgoUsd?: number | null;
+    rMultiple?: number | null;
+    errores?: string[];
+    aciertos?: string[];
+    leccion?: string | null;
+    captura?: string | null;
+  }
+) {
+  const supabase = createClient();
+  try {
+    const payload: Record<string, any> = {};
+    if (updates.setup !== undefined) payload.setup = updates.setup;
+    if (updates.sesion !== undefined) payload.sesion = updates.sesion;
+    if (updates.resultado !== undefined) payload.resultado = updates.resultado;
+    if (updates.sl !== undefined) payload.sl = updates.sl;
+    if (updates.tp !== undefined) payload.tp = updates.tp;
+    if (updates.riesgoUsd !== undefined) payload.riesgo_usd = updates.riesgoUsd;
+    if (updates.rMultiple !== undefined) payload.r_multiple = updates.rMultiple;
+    if (updates.errores !== undefined) payload.errores = updates.errores;
+    if (updates.aciertos !== undefined) payload.aciertos = updates.aciertos;
+    if (updates.leccion !== undefined) payload.leccion = updates.leccion;
+    if (updates.captura !== undefined) payload.captura = updates.captura;
+
+    const { error } = await supabase
+      .from("trades")
+      .update(payload)
+      .eq("id", tradeId)
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("[StateTrading] Error al actualizar trade en Supabase:", error);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: any) {
+    console.error("[StateTrading] Error en updateTradeJournalInSupabase:", err);
+    return { success: false, error: err.message };
+  }
+}
+
