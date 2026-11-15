@@ -51,6 +51,17 @@ const MENTAL_STATES = [
   { id: "ansioso", label: "Ansioso / Impaciente", icon: Flame, color: "text-rose-500", bg: "bg-rose-500/10 border-rose-500/20" },
 ] as const;
 
+function normalizeSession(raw?: string | null): string {
+  if (!raw) return "Apertura NY (15:30-17:30)";
+  const lower = raw.toLowerCase();
+  if (lower.includes("apertura")) return "Apertura NY (15:30-17:30)";
+  if (lower.includes("mediod")) return "Mediodía NY (17:30-19:30)";
+  if (lower.includes("cierre")) return "Cierre NY (19:30-22:00)";
+  if (lower.includes("londres")) return "Londres (08:00-15:30)";
+  if (lower.includes("asia")) return "Asia (00:00-08:00)";
+  return raw;
+}
+
 export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutineProps) {
   const todayStr = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
   const storageKey = `statetrading_routine_${todayStr}`;
@@ -61,7 +72,7 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
 
   // Form states para Pre-Market
   const [mentalState, setMentalState] = React.useState<DailyRoutineData["mentalState"]>("enfocado");
-  const [session, setSession] = React.useState("Apertura NY (09:30-11:30)");
+  const [session, setSession] = React.useState("Apertura NY (15:30-17:30)");
   const [maxTrades, setMaxTrades] = React.useState(2);
   const [maxDailyRiskUsd, setMaxDailyRiskUsd] = React.useState(200);
   const [mainSetup, setMainSetup] = React.useState("Da Vinci");
@@ -83,7 +94,7 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
         const parsed = JSON.parse(saved);
         setRoutine(parsed);
         setMentalState(parsed.mentalState || "enfocado");
-        setSession(parsed.session || "Apertura NY (09:30-11:30)");
+        setSession(normalizeSession(parsed.session));
         setMaxTrades(parsed.maxTrades || 2);
         setMaxDailyRiskUsd(parsed.maxDailyRiskUsd || 200);
         setMainSetup(parsed.mainSetup || "Da Vinci");
@@ -350,10 +361,11 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
                     onChange={(e) => setSession(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs"
                   >
-                    <option value="Apertura NY (09:30-11:30)">Apertura NY (09:30-11:30)</option>
-                    <option value="Mediodía NY (11:30-13:30)">Mediodía NY (11:30-13:30)</option>
-                    <option value="Cierre NY (13:30-16:00)">Cierre NY (13:30-16:00)</option>
-                    <option value="Londres (03:00-09:00)">Londres (03:00-09:00)</option>
+                    <option value="Apertura NY (15:30-17:30)">Apertura NY (15:30-17:30)</option>
+                    <option value="Mediodía NY (17:30-19:30)">Mediodía NY (17:30-19:30)</option>
+                    <option value="Cierre NY (19:30-22:00)">Cierre NY (19:30-22:00)</option>
+                    <option value="Londres (08:00-15:30)">Londres (08:00-15:30)</option>
+                    <option value="Asia (00:00-08:00)">Asia (00:00-08:00)</option>
                   </select>
                 </div>
 

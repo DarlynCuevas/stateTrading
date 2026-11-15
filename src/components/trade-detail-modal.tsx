@@ -66,12 +66,23 @@ const COMMON_WINS = [
 ];
 
 const SESSIONS = [
-  "Apertura NY (09:30-11:30)",
-  "Mediodía NY (11:30-13:30)",
-  "Cierre NY (13:30-16:00)",
-  "Londres (03:00-09:00)",
-  "Asia (18:00-02:00)",
+  "Apertura NY (15:30-17:30)",
+  "Mediodía NY (17:30-19:30)",
+  "Cierre NY (19:30-22:00)",
+  "Londres (08:00-15:30)",
+  "Asia (00:00-08:00)",
 ];
+
+function normalizeSession(raw?: string | null): string {
+  if (!raw) return "";
+  const lower = raw.toLowerCase();
+  if (lower.includes("apertura")) return "Apertura NY (15:30-17:30)";
+  if (lower.includes("mediod")) return "Mediodía NY (17:30-19:30)";
+  if (lower.includes("cierre")) return "Cierre NY (19:30-22:00)";
+  if (lower.includes("londres")) return "Londres (08:00-15:30)";
+  if (lower.includes("asia")) return "Asia (00:00-08:00)";
+  return raw;
+}
 
 export function TradeDetailModal({
   trade,
@@ -84,7 +95,7 @@ export function TradeDetailModal({
 
   const [setup, setSetup] = React.useState<string>(trade.setup || "Da Vinci");
   const [customSetup, setCustomSetup] = React.useState<string>("");
-  const [sesion, setSesion] = React.useState<string>(trade.sesion || "");
+  const [sesion, setSesion] = React.useState<string>(normalizeSession(trade.sesion));
   const [resultado, setResultado] = React.useState<string>(
     trade.resultado || (trade.netPnl > 0 ? "TP" : trade.netPnl < 0 ? "SL" : "BE")
   );
@@ -109,7 +120,7 @@ export function TradeDetailModal({
     if (trade) {
       setSetup(trade.setup || "Da Vinci");
       setCustomSetup("");
-      setSesion(trade.sesion || "");
+      setSesion(normalizeSession(trade.sesion));
       setResultado(
         trade.resultado || (trade.netPnl > 0 ? "TP" : trade.netPnl < 0 ? "SL" : "BE")
       );
