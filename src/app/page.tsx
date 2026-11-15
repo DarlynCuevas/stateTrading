@@ -45,6 +45,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Flame,
+  Eye,
 } from "lucide-react";
 import { SyncDesktopModal } from "@/components/sync-desktop-modal";
 import { ChangePasswordModal } from "@/components/change-password-modal";
@@ -113,12 +114,20 @@ export default function Home() {
   const [showSyncModal, setShowSyncModal] = React.useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = React.useState(false);
 
+  // Flag central de permisos: Modo Solo Lectura al auditar a otro usuario
+  const isReadOnly = Boolean(selectedTraderId !== "me" && user?.id && selectedTraderId !== user.id);
+  const viewingTrader = React.useMemo(() => {
+    if (!isReadOnly) return null;
+    return teamMembers.find((m) => m.id === selectedTraderId) || null;
+  }, [isReadOnly, selectedTraderId, teamMembers]);
+
   const handleRefreshData = async () => {
-    if (!user?.id) return;
+    const targetUserId = selectedTraderId === "me" ? user?.id : selectedTraderId;
+    if (!targetUserId) return;
     setSyncingTV(true);
     setSyncStatus("Actualizando...");
     try {
-      const refreshed = await loadUserDataFromSupabase(user.id);
+      const refreshed = await loadUserDataFromSupabase(targetUserId);
       setAuditData(refreshed);
       setSyncStatus("✓ Datos actualizados");
     } catch (err: any) {
@@ -133,6 +142,9 @@ export default function Home() {
     tradeId: string,
     updates: Partial<ParsedTrade>
   ) => {
+    // Protección estricta: Bloquear cualquier modificación si está en modo solo lectura
+    if (isReadOnly) return;
+
     setAuditData((prev) => {
       const updatedOps = prev.operations.map((op) => {
         if (op.id !== tradeId) return op;
@@ -166,6 +178,7 @@ export default function Home() {
   };
 
   const handleSyncTradingViewDesktop = async () => {
+    if (isReadOnly) return;
     setSyncingTV(true);
     setSyncStatus(null);
     try {
@@ -881,6 +894,40 @@ export default function Home() {
         {/* Content Body */}
         <main className="flex-1 overflow-y-auto p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-8">
 
+          {/* Banner informativo de Modo Solo Lectura */}
+          {isReadOnly && (
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900 dark:text-amber-200 animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-amber-500/20">
+                  <Eye className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+                      Modo Consulta • Solo Lectura
+                    </h4>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 font-bold text-amber-700 dark:text-amber-300">
+                      Bloqueo de Modificación
+                    </span>
+                  </div>
+                  <p className="text-xs text-amber-700 dark:text-amber-300/90 mt-0.5">
+                    Estás auditando el diario de <strong>{viewingTrader?.nombre || viewingTrader?.email || "otro usuario"}</strong>. Las operaciones y cuentas están protegidas contra cualquier cambio.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedTraderId("me");
+                  setSelectedAccount("active");
+                }}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-sm transition-all cursor-pointer shrink-0 self-start sm:self-auto"
+              >
+                Volver a Mi Perfil
+              </button>
+            </div>
+          )}
+
           {/* Mobile tabs */}
           <div className="flex md:hidden border-b border-slate-200 dark:border-slate-800 pb-2 gap-4 text-xs font-semibold overflow-x-auto">
             {(["dashboard", "guardian", "review", "calendar", "table", "accounts"] as const).map(
@@ -913,7 +960,9 @@ export default function Home() {
             <div className="space-y-8 animate-fadeIn">
 
               {/* Rutina Pre-Mercado & Plan del Día */}
-              <PreMarketRoutine todayOperations={todayOps} todayPnl={todayPnl} />
+              {!isReadOnly && (
+                <PreMarketRoutine todayOperations={todayOps} todayPnl={todayPnl} />
+              )}
 
               {/* Mini Widget Guardián de Fondeo */}
               {activeAccounts.length > 0 && (
@@ -1102,6 +1151,7 @@ export default function Home() {
                   onUpdateTrade={handleUpdateTrade}
                   accountMap={auditData.accountMap}
                   showDisciplineSummary={false}
+                  readOnly={isReadOnly}
                 />
               </section>
             </div>
@@ -1197,6 +1247,7 @@ export default function Home() {
                 onUpdateTrade={handleUpdateTrade}
                 accountMap={auditData.accountMap}
                 showDisciplineSummary={true}
+                readOnly={isReadOnly}
               />
             </section>
           )}
@@ -1224,9 +1275,12 @@ export default function Home() {
               <AccountsManager
                 accounts={auditData.accounts}
                 operations={auditData.operations}
-                userId={user.id}
+                userId={selectedTraderId === "me" ? user.id : selectedTraderId}
+                readOnly={isReadOnly}
                 onAccountStatusChanged={async () => {
-                  const refreshed = await loadUserDataFromSupabase(user.id);
+                  if (isReadOnly) return;
+                  const targetUserId = selectedTraderId === "me" ? user.id : selectedTraderId;
+                  const refreshed = await loadUserDataFromSupabase(targetUserId);
                   setAuditData(refreshed);
                 }}
               />

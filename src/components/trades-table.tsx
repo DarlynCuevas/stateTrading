@@ -30,6 +30,7 @@ interface TradesTableProps {
   onUpdateTrade?: (tradeId: string, updates: Partial<ParsedTrade>) => Promise<void>;
   accountMap?: Record<string, { nombre: string }>;
   showDisciplineSummary?: boolean;
+  readOnly?: boolean;
 }
 
 type SortColumn =
@@ -46,6 +47,7 @@ export function TradesTable({
   onUpdateTrade,
   accountMap,
   showDisciplineSummary = true,
+  readOnly = false,
 }: TradesTableProps) {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -200,6 +202,7 @@ export function TradesTable({
   };
 
   const handleSaveModal = async (tradeId: string, updates: Partial<ParsedTrade>) => {
+    if (readOnly) return;
     if (onUpdateTrade) {
       await onUpdateTrade(tradeId, updates);
     }
@@ -644,6 +647,7 @@ export function TradesTable({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSave={handleSaveModal}
+        readOnly={readOnly}
         accountName={
           selectedTrade?.cuentaId
             ? accountMap?.[selectedTrade.cuentaId]?.nombre

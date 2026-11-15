@@ -23,6 +23,7 @@ interface AccountsManagerProps {
   operations: Operation[];
   userId: string;
   onAccountStatusChanged: () => Promise<void> | void;
+  readOnly?: boolean;
 }
 
 export function AccountsManager({
@@ -30,6 +31,7 @@ export function AccountsManager({
   operations,
   userId,
   onAccountStatusChanged,
+  readOnly = false,
 }: AccountsManagerProps) {
   const [filter, setFilter] = React.useState<"all" | "active" | "burned">("active");
   const [loadingAccId, setLoadingAccId] = React.useState<string | null>(null);
@@ -81,6 +83,7 @@ export function AccountsManager({
     accountId: string,
     newStatus: "activa" | "quemada" | "cancelada" | "superada"
   ) => {
+    if (readOnly) return;
     const confirmMessage =
       newStatus === "quemada"
         ? "¿Estás seguro de marcar esta cuenta como QUEMADA? Ya no se sumará a tus balances ni KPIs activos."
@@ -281,7 +284,11 @@ export function AccountsManager({
 
               {/* Action Buttons */}
               <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
-                {isActiva ? (
+                {readOnly ? (
+                  <div className="w-full py-1.5 text-center text-[11px] font-medium text-slate-400 bg-slate-50 dark:bg-slate-800/40 rounded-lg border border-slate-200/50 dark:border-slate-800/50 flex items-center justify-center gap-1.5">
+                    <span>🔒 Cuenta en modo solo lectura</span>
+                  </div>
+                ) : isActiva ? (
                   <>
                     <button
                       onClick={() => handleStatusChange(acc.id, "quemada")}

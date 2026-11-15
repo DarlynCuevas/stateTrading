@@ -21,6 +21,7 @@ import {
   Target,
   Shield,
   Sparkles,
+  Eye,
 } from "lucide-react";
 
 interface TradeDetailModalProps {
@@ -29,6 +30,7 @@ interface TradeDetailModalProps {
   onClose: () => void;
   onSave: (tradeId: string, updates: Partial<ParsedTrade>) => Promise<void>;
   accountName?: string;
+  readOnly?: boolean;
 }
 
 const COMMON_SETUPS = [
@@ -90,6 +92,7 @@ export function TradeDetailModal({
   onClose,
   onSave,
   accountName,
+  readOnly = false,
 }: TradeDetailModalProps) {
   if (!isOpen || !trade) return null;
 
@@ -212,6 +215,7 @@ export function TradeDetailModal({
   };
 
   const handleSave = async () => {
+    if (readOnly) return;
     setSaving(true);
     try {
       const parsedSl = sl.trim() !== "" ? parseFloat(sl) : null;
@@ -293,6 +297,12 @@ export function TradeDetailModal({
                   {accountName && (
                     <span className="hidden sm:inline-block text-[11px] px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/60 font-medium">
                       {accountName}
+                    </span>
+                  )}
+                  {readOnly && (
+                    <span className="inline-flex items-center gap-1 text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25 font-bold">
+                      <Eye className="h-3 w-3" />
+                      <span>Solo Lectura</span>
                     </span>
                   )}
                 </div>
@@ -379,10 +389,10 @@ export function TradeDetailModal({
                   <Tag className="h-3.5 w-3.5 text-emerald-500" />
                   <span>Setup / Estrategia Utilizada</span>
                 </label>
-                {setup && (
+                {!readOnly && setup && (
                   <button
                     onClick={() => setSetup("")}
-                    className="text-[10px] text-slate-400 hover:text-rose-500 transition-colors"
+                    className="text-[10px] text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
                   >
                     Borrar selección
                   </button>
@@ -395,12 +405,13 @@ export function TradeDetailModal({
                     <button
                       key={s}
                       type="button"
-                      onClick={() => setSetup(isSelected ? "" : s)}
+                      disabled={readOnly}
+                      onClick={() => !readOnly && setSetup(isSelected ? "" : s)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                         isSelected
                           ? "bg-emerald-500 text-white font-bold shadow-sm shadow-emerald-500/20"
                           : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/70"
-                      }`}
+                      } ${readOnly ? "cursor-default opacity-90" : "cursor-pointer"}`}
                     >
                       {s}
                     </button>
@@ -408,35 +419,37 @@ export function TradeDetailModal({
                 })}
               </div>
               {/* Input personalizado si el setup no está en la lista */}
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="text"
-                  placeholder="O escribe otro setup personalizado..."
-                  value={customSetup}
-                  onChange={(e) => setCustomSetup(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && customSetup.trim()) {
-                      e.preventDefault();
-                      setSetup(customSetup.trim());
-                      setCustomSetup("");
-                    }
-                  }}
-                  className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (customSetup.trim()) {
-                      setSetup(customSetup.trim());
-                      setCustomSetup("");
-                    }
-                  }}
-                  disabled={!customSetup.trim()}
-                  className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium disabled:opacity-40 transition-colors"
-                >
-                  Asignar
-                </button>
-              </div>
+              {!readOnly && (
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="text"
+                    placeholder="O escribe otro setup personalizado..."
+                    value={customSetup}
+                    onChange={(e) => setCustomSetup(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && customSetup.trim()) {
+                        e.preventDefault();
+                        setSetup(customSetup.trim());
+                        setCustomSetup("");
+                      }
+                    }}
+                    className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customSetup.trim()) {
+                        setSetup(customSetup.trim());
+                        setCustomSetup("");
+                      }
+                    }}
+                    disabled={!customSetup.trim()}
+                    className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium disabled:opacity-40 transition-colors"
+                  >
+                    Asignar
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* 3. Sesión de Mercado & Resultado */}
@@ -449,7 +462,8 @@ export function TradeDetailModal({
                 <select
                   value={sesion}
                   onChange={(e) => setSesion(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  disabled={readOnly}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-emerald-500 disabled:opacity-80 disabled:cursor-not-allowed"
                 >
                   <option value="">Seleccionar sesión...</option>
                   {SESSIONS.map((sess) => (
@@ -472,7 +486,8 @@ export function TradeDetailModal({
                       <button
                         key={res}
                         type="button"
-                        onClick={() => setResultado(res)}
+                        disabled={readOnly}
+                        onClick={() => !readOnly && setResultado(res)}
                         className={`py-1.5 rounded-lg font-bold transition-all text-center ${
                           isSelected
                             ? res === "TP"
@@ -481,7 +496,7 @@ export function TradeDetailModal({
                               ? "bg-rose-500 text-white"
                               : "bg-blue-500 text-white"
                             : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-                        }`}
+                        } ${readOnly ? "cursor-default opacity-85" : "cursor-pointer"}`}
                       >
                         {res}
                       </button>
@@ -515,7 +530,8 @@ export function TradeDetailModal({
                     placeholder="ej: 21450"
                     value={sl}
                     onChange={(e) => setSl(e.target.value)}
-                    className="w-full mt-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-mono text-xs focus:ring-1 focus:ring-emerald-500"
+                    disabled={readOnly}
+                    className="w-full mt-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-mono text-xs focus:ring-1 focus:ring-emerald-500 disabled:opacity-75 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -528,7 +544,8 @@ export function TradeDetailModal({
                     placeholder="ej: 21520"
                     value={tp}
                     onChange={(e) => setTp(e.target.value)}
-                    className="w-full mt-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-mono text-xs focus:ring-1 focus:ring-emerald-500"
+                    disabled={readOnly}
+                    className="w-full mt-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-mono text-xs focus:ring-1 focus:ring-emerald-500 disabled:opacity-75 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -541,7 +558,8 @@ export function TradeDetailModal({
                     placeholder="ej: 250"
                     value={riesgoUsd}
                     onChange={(e) => setRiesgoUsd(e.target.value)}
-                    className="w-full mt-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-mono text-xs focus:ring-1 focus:ring-emerald-500"
+                    disabled={readOnly}
+                    className="w-full mt-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-mono text-xs focus:ring-1 focus:ring-emerald-500 disabled:opacity-75 disabled:cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -554,7 +572,8 @@ export function TradeDetailModal({
                     placeholder={calculatedR || "ej: 2.5"}
                     value={rMultiple}
                     onChange={(e) => setRMultiple(e.target.value)}
-                    className="w-full mt-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-mono text-xs focus:ring-1 focus:ring-emerald-500"
+                    disabled={readOnly}
+                    className="w-full mt-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-mono text-xs focus:ring-1 focus:ring-emerald-500 disabled:opacity-75 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -577,12 +596,13 @@ export function TradeDetailModal({
                       <button
                         key={err}
                         type="button"
-                        onClick={() => toggleError(err)}
+                        disabled={readOnly}
+                        onClick={() => !readOnly && toggleError(err)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
                           isSelected
                             ? "bg-rose-500 text-white font-bold shadow-sm shadow-rose-500/20"
                             : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400"
-                        }`}
+                        } ${readOnly ? "cursor-default opacity-85" : "cursor-pointer"}`}
                       >
                         {err}
                       </button>
@@ -603,12 +623,13 @@ export function TradeDetailModal({
                       <button
                         key={win}
                         type="button"
-                        onClick={() => toggleAcierto(win)}
+                        disabled={readOnly}
+                        onClick={() => !readOnly && toggleAcierto(win)}
                         className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
                           isSelected
                             ? "bg-emerald-500 text-white font-bold shadow-sm shadow-emerald-500/20"
                             : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400"
-                        }`}
+                        } ${readOnly ? "cursor-default opacity-85" : "cursor-pointer"}`}
                       >
                         {win}
                       </button>
@@ -625,44 +646,50 @@ export function TradeDetailModal({
                   <ImageIcon className="h-3.5 w-3.5 text-cyan-500" />
                   <span>Captura del Gráfico (TradingView)</span>
                 </label>
-                <span className="text-[10px] text-slate-400">
-                  Tip: Puedes pegar con <kbd className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono">Cmd+V</kbd>
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="URL de imagen o TradingView (https://www.tradingview.com/x/...)"
-                  value={captura.startsWith("data:") ? "[Imagen pegada desde portapapeles]" : captura}
-                  onChange={(e) => {
-                    if (!captura.startsWith("data:")) {
-                      setCaptura(e.target.value);
-                    }
-                  }}
-                  disabled={captura.startsWith("data:")}
-                  className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 text-xs focus:ring-1 focus:ring-emerald-500"
-                />
-                <label className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium cursor-pointer transition-colors shrink-0">
-                  <span>Subir Archivo</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-                {captura && (
-                  <button
-                    type="button"
-                    onClick={() => setCaptura("")}
-                    className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
-                    title="Eliminar captura"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                {!readOnly && (
+                  <span className="text-[10px] text-slate-400">
+                    Tip: Puedes pegar con <kbd className="px-1 py-0.5 rounded bg-slate-200 dark:bg-slate-800 font-mono">Cmd+V</kbd>
+                  </span>
                 )}
               </div>
+
+              {!readOnly ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="URL de imagen o TradingView (https://www.tradingview.com/x/...)"
+                    value={captura.startsWith("data:") ? "[Imagen pegada desde portapapeles]" : captura}
+                    onChange={(e) => {
+                      if (!captura.startsWith("data:")) {
+                        setCaptura(e.target.value);
+                      }
+                    }}
+                    disabled={captura.startsWith("data:")}
+                    className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 text-xs focus:ring-1 focus:ring-emerald-500"
+                  />
+                  <label className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-medium cursor-pointer transition-colors shrink-0">
+                    <span>Subir Archivo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                  {captura && (
+                    <button
+                      type="button"
+                      onClick={() => setCaptura("")}
+                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors"
+                      title="Eliminar captura"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ) : !captura ? (
+                <p className="text-xs text-slate-400 italic">Sin captura registrada para esta operación.</p>
+              ) : null}
 
               {/* Vista previa miniatura de la captura */}
               {captura && (
@@ -676,7 +703,7 @@ export function TradeDetailModal({
                     <button
                       type="button"
                       onClick={() => setCapturaPreviewOpen(true)}
-                      className="px-3 py-1.5 rounded-lg bg-white/90 dark:bg-slate-900/90 text-slate-800 dark:text-slate-200 font-medium text-xs flex items-center gap-1.5 shadow-lg backdrop-blur-sm"
+                      className="px-3 py-1.5 rounded-lg bg-white/90 dark:bg-slate-900/90 text-slate-800 dark:text-slate-200 font-medium text-xs flex items-center gap-1.5 shadow-lg backdrop-blur-sm cursor-pointer"
                     >
                       <Maximize2 className="h-3.5 w-3.5" />
                       <span>Ver Completa</span>
@@ -704,10 +731,11 @@ export function TradeDetailModal({
               </label>
               <textarea
                 rows={3}
-                placeholder="¿Qué viste antes de entrar? ¿Qué sentiste durante el trade? ¿Qué lección de disciplina o ejecución te deja esta operación?"
+                placeholder={readOnly ? "Sin notas registradas." : "¿Qué viste antes de entrar? ¿Qué sentiste durante el trade? ¿Qué lección de disciplina o ejecución te deja esta operación?"}
                 value={leccion}
                 onChange={(e) => setLeccion(e.target.value)}
-                className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs leading-relaxed resize-y"
+                disabled={readOnly}
+                className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 text-xs leading-relaxed resize-y disabled:opacity-85 disabled:cursor-not-allowed"
               />
             </div>
           </div>
@@ -715,7 +743,12 @@ export function TradeDetailModal({
           {/* Footer con Guardar */}
           <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              {savedSuccess ? (
+              {readOnly ? (
+                <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                  <Eye className="h-4 w-4" />
+                  <span>Modo solo lectura: Estás auditando una operación ajena.</span>
+                </span>
+              ) : savedSuccess ? (
                 <span className="text-xs font-semibold text-emerald-500 flex items-center gap-1 animate-fadeIn">
                   <Check className="h-4 w-4" />
                   <span>¡Operación guardada con éxito!</span>
@@ -731,28 +764,30 @@ export function TradeDetailModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Cerrar
               </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={saving}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-500/20 flex items-center gap-2 disabled:opacity-50 transition-all cursor-pointer"
-              >
-                {saving ? (
-                  <>
-                    <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Guardando...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-3.5 w-3.5" />
-                    <span>Guardar Cambios</span>
-                  </>
-                )}
-              </button>
+              {!readOnly && (
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white shadow-md shadow-emerald-500/20 flex items-center gap-2 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {saving ? (
+                    <>
+                      <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-3.5 w-3.5" />
+                      <span>Guardar Cambios</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
