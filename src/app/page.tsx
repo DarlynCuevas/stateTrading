@@ -310,8 +310,9 @@ export default function Home() {
 
   // Balance real e inicial de la cuenta seleccionada
   const { realBalance, realInitialBalance } = React.useMemo(() => {
-    if (selectedAccount === "active") {
-      // Suma SOLO de cuentas vivas / activas
+    // Si la selección es "active" o "all", el Balance Real vivo SIEMPRE debe sumar únicamente
+    // las cuentas vivas/activas (excluyendo cuentas quemadas, canceladas o con drawdown violado).
+    if (selectedAccount === "active" || selectedAccount === "all") {
       const totalBalance = activeAccounts.reduce(
         (sum, a) => sum + (a.balance || 0),
         0
@@ -322,19 +323,17 @@ export default function Home() {
       );
       return { realBalance: totalBalance, realInitialBalance: totalInitial };
     }
-    if (selectedAccount === "all") {
-      // Suma histórica de todas las cuentas
-      const totalBalance = auditData.accounts.reduce(
-        (sum, a) => sum + (a.balance || 0),
-        0,
-      );
-      const totalInitial = auditData.accounts.reduce(
-        (sum, a) => sum + (a.balanceInicial || 0),
-        0,
-      );
-      return { realBalance: totalBalance, realInitialBalance: totalInitial };
-    }
+
     const cuenta = auditData.accountMap[selectedAccount];
+    // Si se ha seleccionado una cuenta individual que está quemada o cancelada,
+    // su balance operativo utilizable es 0 (no se cuenta dinero fantasma de una cuenta liquidada)
+    if (cuenta && isAccountBurned(cuenta)) {
+      return {
+        realBalance: 0,
+        realInitialBalance: cuenta.balanceInicial ?? 0,
+      };
+    }
+
     return {
       realBalance: cuenta?.balance ?? 0,
       realInitialBalance: cuenta?.balanceInicial ?? 0,
@@ -685,8 +684,13 @@ export default function Home() {
             <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-2">
               <span className="flex items-center gap-1.5">
                 <Wallet className="h-3 w-3 text-emerald-500" />
-                Balance Real
+                Balance Real Activo
               </span>
+              {inactiveAccounts.length > 0 && (
+                <span className="text-[10px] text-amber-500 font-medium">
+                  {activeAccounts.length} activas
+                </span>
+              )}
             </div>
             <div className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">
               {realBalance.toLocaleString("en-US", {
@@ -991,25 +995,41 @@ export default function Home() {
                   </h2>
                   <span className="text-xs text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">
                     {selectedAccount === "all"
-                      ? "Todas las cuentas"
+                      ? "Histórico Global (Todas)"
+                      : selectedAccount === "active"
+                      ? "Cuentas Activas"
                       : selectedAccount}{" "}
                     · {parsedTrades.length} ops
                   </span>
                 </div>
+
+                {/* Banner de aviso si se seleccionó una cuenta quemada o cancelada */}
+                {selectedAccount !== "active" &&
+                  selectedAccount !== "all" &&
+                  auditData.accountMap[selectedAccount] &&
+                  isAccountBurned(auditData.accountMap[selectedAccount]) && (
+                    <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs font-medium">
+                      <Flame className="h-4 w-4 shrink-0" />
+                      <span>
+                        Esta cuenta está <strong>QUEMADA / CANCELADA</strong>. Su capital utilizable es <strong>$0.00</strong> y no se suma a tu Balance Real activo.
+                      </span>
+                    </div>
+                  )}
+
                 <KpiCards stats={stats} />
               </section>
 
               {/* Resumen semanal por cuenta */}
-              {selectedAccount === "all" && auditData.accounts.length > 1 && (
+              {selectedAccount === "all" && activeAccounts.length > 1 && (
                 <section className="space-y-3">
                   <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-500/10 text-indigo-500 text-xs font-bold">
                       ★
                     </span>
-                    <span>Resumen Esta Semana por Cuenta</span>
+                    <span>Resumen Esta Semana por Cuenta Activa</span>
                   </h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {auditData.accounts.map((cuenta) => {
+                    {activeAccounts.map((cuenta) => {
                       const pnl = weekSummary.byAccount[cuenta.id] ?? 0;
                       return (
                         <button
