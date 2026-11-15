@@ -46,6 +46,7 @@ import {
   ShieldCheck,
   Flame,
   Eye,
+  Receipt,
 } from "lucide-react";
 import { SyncDesktopModal } from "@/components/sync-desktop-modal";
 import { ChangePasswordModal } from "@/components/change-password-modal";
@@ -54,6 +55,7 @@ import { PropFirmGuardian } from "@/components/prop-firm-guardian";
 import { EconomicNewsPill } from "@/components/economic-news-pill";
 import { PreMarketRoutine } from "@/components/pre-market-routine";
 import { SweetSpotHeatmap } from "@/components/sweet-spot-heatmap";
+import { ExpensesManager } from "@/components/expenses-manager";
 
 // ─── Convierte una Operation del JSON a ParsedTrade para los gráficos/stats ───
 function operationToParsedTrade(op: Operation): ParsedTrade {
@@ -350,7 +352,7 @@ export default function Home() {
 
   // ─── Tab activo ───────────────────────────────────────────────────
   const [activeTab, setActiveTab] = React.useState<
-    "dashboard" | "guardian" | "review" | "calendar" | "table" | "accounts"
+    "dashboard" | "guardian" | "review" | "calendar" | "table" | "accounts" | "expenses"
   >("dashboard");
 
   // ─── Verificar sesión al montar + escuchar cambios ────────────────
@@ -640,6 +642,12 @@ export default function Home() {
                   Icon: ShieldAlert,
                   color: "text-rose-500",
                 },
+                {
+                  id: "expenses",
+                  label: "Gastos & Rentabilidad",
+                  Icon: Receipt,
+                  color: "text-amber-500",
+                },
               ] as const
             ).map(({ id, label, Icon, color }) => (
               <button
@@ -905,7 +913,7 @@ export default function Home() {
 
           {/* Mobile tabs */}
           <div className="flex md:hidden border-b border-slate-200 dark:border-slate-800 pb-2 gap-4 text-xs font-semibold overflow-x-auto">
-            {(["dashboard", "guardian", "review", "calendar", "table", "accounts"] as const).map(
+            {(["dashboard", "guardian", "review", "calendar", "table", "accounts", "expenses"] as const).map(
               (tab) => (
                 <button
                   key={tab}
@@ -924,7 +932,9 @@ export default function Home() {
                       ? `Diario (${parsedTrades.length})`
                       : tab === "accounts"
                         ? `Cuentas (${inactiveAccounts.length})`
-                        : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                        : tab === "expenses"
+                          ? "Gastos & ROI"
+                          : tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
               ),
             )}
@@ -1258,6 +1268,18 @@ export default function Home() {
                   const refreshed = await loadUserDataFromSupabase(targetUserId);
                   setAuditData(refreshed);
                 }}
+              />
+            </section>
+          )}
+
+          {/* ─── TAB: EXPENSES & ROI ─── */}
+          {activeTab === "expenses" && (
+            <section className="space-y-4 animate-fadeIn">
+              <ExpensesManager
+                accounts={auditData.accounts}
+                userId={selectedTraderId === "me" ? user.id : selectedTraderId}
+                readOnly={isReadOnly}
+                traderName={viewingTrader?.nombre || viewingTrader?.alias}
               />
             </section>
           )}
