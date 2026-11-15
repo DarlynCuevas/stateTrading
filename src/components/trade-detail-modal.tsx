@@ -32,6 +32,7 @@ interface TradeDetailModalProps {
 }
 
 const COMMON_SETUPS = [
+  "Da Vinci",
   "FVG / Imbalance",
   "Break & Retest",
   "Order Block",
@@ -81,7 +82,7 @@ export function TradeDetailModal({
 }: TradeDetailModalProps) {
   if (!isOpen || !trade) return null;
 
-  const [setup, setSetup] = React.useState<string>(trade.setup || "");
+  const [setup, setSetup] = React.useState<string>(trade.setup || "Da Vinci");
   const [customSetup, setCustomSetup] = React.useState<string>("");
   const [sesion, setSesion] = React.useState<string>(trade.sesion || "");
   const [resultado, setResultado] = React.useState<string>(
@@ -106,7 +107,7 @@ export function TradeDetailModal({
   // Sincronizar estado cuando cambia el trade
   React.useEffect(() => {
     if (trade) {
-      setSetup(trade.setup || "");
+      setSetup(trade.setup || "Da Vinci");
       setCustomSetup("");
       setSesion(trade.sesion || "");
       setResultado(

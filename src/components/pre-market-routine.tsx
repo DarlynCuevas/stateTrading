@@ -64,7 +64,7 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
   const [session, setSession] = React.useState("Apertura NY (09:30-11:30)");
   const [maxTrades, setMaxTrades] = React.useState(2);
   const [maxDailyRiskUsd, setMaxDailyRiskUsd] = React.useState(200);
-  const [mainSetup, setMainSetup] = React.useState("FVG / Imbalance");
+  const [mainSetup, setMainSetup] = React.useState("Da Vinci");
   const [acknowledgedNews, setAcknowledgedNews] = React.useState(true);
   const [notes, setNotes] = React.useState("");
 
@@ -86,7 +86,7 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
         setSession(parsed.session || "Apertura NY (09:30-11:30)");
         setMaxTrades(parsed.maxTrades || 2);
         setMaxDailyRiskUsd(parsed.maxDailyRiskUsd || 200);
-        setMainSetup(parsed.mainSetup || "FVG / Imbalance");
+        setMainSetup(parsed.mainSetup || "Da Vinci");
         setFollowedPlan(parsed.followedPlan ?? null);
         setDebriefNotes(parsed.debriefNotes || "");
       }
@@ -365,7 +365,7 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
                     type="text"
                     value={mainSetup}
                     onChange={(e) => setMainSetup(e.target.value)}
-                    placeholder="ej: FVG / Break & Retest"
+                    placeholder="ej: Da Vinci"
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-xs"
                   />
                 </div>
