@@ -63,6 +63,33 @@ export interface Operation {
   pendiente?: string | null;
 }
 
+/**
+ * Determina si una cuenta de trading está quemada, cancelada o ha violado los límites de drawdown.
+ */
+export function isAccountBurned(a: Account): boolean {
+  if (a.activa === false || a.estado === "quemada" || a.estado === "cancelada") {
+    return true;
+  }
+  // Auto-detectar si el saldo o colchón de drawdown ha perforado el límite de liquidación
+  if (a.distanciaDrawdown != null && a.distanciaDrawdown <= 0) {
+    return true;
+  }
+  if (a.nivelLiquidacion != null && a.balance != null && a.balance > 0 && a.balance <= a.nivelLiquidacion) {
+    return true;
+  }
+  // Cuentas de evaluación de 25k quemadas si han perdido 1000 o más
+  if (a.balanceInicial === 25000 && a.balance != null && a.balance > 0 && (a.balanceInicial - a.balance >= 1000)) {
+    return true;
+  }
+  // Si la pérdida acumulada supera el drawdown máximo configurado
+  if (a.reglas?.drawdownMax != null && a.balanceInicial != null && a.balance != null && a.balance > 0) {
+    if (a.balanceInicial - a.balance >= a.reglas.drawdownMax) {
+      return true;
+    }
+  }
+  return false;
+}
+
 interface RawAccount {
   id: string;
   alias?: string;

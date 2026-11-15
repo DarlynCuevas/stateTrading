@@ -18,7 +18,7 @@ import {
   generatePnlDistribution,
   generateHourlyPerformance,
 } from "@/lib/core-logic";
-import { getAuditData, Operation, Account } from "@/lib/operations";
+import { getAuditData, Operation, Account, isAccountBurned } from "@/lib/operations";
 import {
   getTeamMembers,
   loadUserDataFromSupabase,
@@ -279,34 +279,9 @@ export default function Home() {
   // ─── Cuenta seleccionada (por defecto "active" = solo cuentas vivas) ──
   const [selectedAccount, setSelectedAccount] = React.useState<string>("active");
 
-  // Cuentas activas vs inactivas (quemadas o canceladas)
-  const isAccountBurned = React.useCallback((a: Account) => {
-    if (a.activa === false || a.estado === "quemada" || a.estado === "cancelada") {
-      return true;
-    }
-    // Auto-detectar si el saldo o colchón de drawdown ha perforado el límite de liquidación
-    if (a.distanciaDrawdown != null && a.distanciaDrawdown <= 0) {
-      return true;
-    }
-    if (a.nivelLiquidacion != null && a.balance != null && a.balance > 0 && a.balance <= a.nivelLiquidacion) {
-      return true;
-    }
-    // Cuentas de evaluación de 25k quemadas si han perdido 1000 o más
-    if (a.balanceInicial === 25000 && a.balance != null && a.balance > 0 && (a.balanceInicial - a.balance >= 1000)) {
-      return true;
-    }
-    // Si la pérdida acumulada supera el drawdown máximo configurado
-    if (a.reglas?.drawdownMax != null && a.balanceInicial != null && a.balance != null && a.balance > 0) {
-      if (a.balanceInicial - a.balance >= a.reglas.drawdownMax) {
-        return true;
-      }
-    }
-    return false;
-  }, []);
-
   const activeAccounts = React.useMemo(() => {
     return auditData.accounts.filter((a) => !isAccountBurned(a));
-  }, [auditData.accounts, isAccountBurned]);
+  }, [auditData.accounts]);
 
   const activeAccountIds = React.useMemo(() => {
     return activeAccounts.map((a) => a.id);
@@ -314,7 +289,7 @@ export default function Home() {
 
   const inactiveAccounts = React.useMemo(() => {
     return auditData.accounts.filter((a) => isAccountBurned(a));
-  }, [auditData.accounts, isAccountBurned]);
+  }, [auditData.accounts]);
 
   // Operaciones filtradas según la cuenta seleccionada
   const filteredOps: Operation[] = React.useMemo(() => {
@@ -1179,8 +1154,8 @@ export default function Home() {
               </div>
 
               <PropFirmGuardian
-                accounts={auditData.accounts}
-                operations={auditData.operations}
+                accounts={activeAccounts}
+                operations={filteredOps}
                 selectedAccountId={selectedAccount}
                 onSelectAccount={(accId) => setSelectedAccount(accId)}
               />

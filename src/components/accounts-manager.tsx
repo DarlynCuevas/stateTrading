@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Account, Operation } from "@/lib/operations";
+import { Account, Operation, isAccountBurned } from "@/lib/operations";
 import { updateAccountStatus } from "@/lib/team-sync";
 import {
   Wallet,
@@ -35,30 +35,6 @@ export function AccountsManager({
 }: AccountsManagerProps) {
   const [filter, setFilter] = React.useState<"all" | "active" | "burned">("active");
   const [loadingAccId, setLoadingAccId] = React.useState<string | null>(null);
-
-  // Helper para detectar cuentas quemadas (manualmente o por límite de drawdown)
-  const isAccountBurned = React.useCallback((a: Account) => {
-    if (a.activa === false || a.estado === "quemada" || a.estado === "cancelada") {
-      return true;
-    }
-    if (a.distanciaDrawdown != null && a.distanciaDrawdown <= 0) {
-      return true;
-    }
-    if (a.nivelLiquidacion != null && a.balance != null && a.balance > 0 && a.balance <= a.nivelLiquidacion) {
-      return true;
-    }
-    // Cuentas de evaluación de 25k quemadas si han perdido 1000 o más
-    if (a.balanceInicial === 25000 && a.balance != null && a.balance > 0 && (a.balanceInicial - a.balance >= 1000)) {
-      return true;
-    }
-    // Si la pérdida acumulada supera el drawdown máximo configurado
-    if (a.reglas?.drawdownMax != null && a.balanceInicial != null && a.balance != null && a.balance > 0) {
-      if (a.balanceInicial - a.balance >= a.reglas.drawdownMax) {
-        return true;
-      }
-    }
-    return false;
-  }, []);
 
   // Estadísticas globales de cuentas
   const activeAccounts = accounts.filter((a) => !isAccountBurned(a));

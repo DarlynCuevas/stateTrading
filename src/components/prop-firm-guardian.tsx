@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Account, Operation } from "@/lib/operations";
+import { Account, Operation, isAccountBurned } from "@/lib/operations";
 import {
   calculateAccountRiskMetrics,
   AccountRiskMetrics,
@@ -39,11 +39,9 @@ export function PropFirmGuardian({
   selectedAccountId,
   onSelectAccount,
 }: PropFirmGuardianProps) {
-  // Filtrar cuentas activas
+  // Filtrar ESTRICTAMENTE cuentas vivas (excluye quemadas, canceladas o con drawdown violado)
   const activeAccounts = React.useMemo(() => {
-    return accounts.filter(
-      (a) => a.activa !== false && a.estado !== "quemada" && a.estado !== "cancelada"
-    );
+    return accounts.filter((a) => !isAccountBurned(a));
   }, [accounts]);
 
   // Métricas calculadas para cada cuenta activa
@@ -51,14 +49,11 @@ export function PropFirmGuardian({
     return activeAccounts.map((a) => calculateAccountRiskMetrics(a, operations));
   }, [activeAccounts, operations]);
 
-  // Cuenta enfocada (o la primera activa si no hay selección)
+  // Cuenta enfocada (solo entre las cuentas vivas)
   const currentAccountMetrics = React.useMemo(() => {
     if (selectedAccountId && selectedAccountId !== "all" && selectedAccountId !== "active") {
-      return (
-        metricsList.find((m) => m.accountId === selectedAccountId) ||
-        metricsList[0] ||
-        null
-      );
+      const found = metricsList.find((m) => m.accountId === selectedAccountId);
+      if (found) return found;
     }
     return metricsList[0] || null;
   }, [metricsList, selectedAccountId]);
