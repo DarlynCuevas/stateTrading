@@ -1,18 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useTheme } from "next-themes";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Cell,
-  ReferenceLine,
-} from "recharts";
 import {
   Calendar,
   TrendingUp,
@@ -33,7 +21,6 @@ interface PeriodReviewProps {
 }
 
 export function PeriodReview({ trades }: PeriodReviewProps) {
-  const { resolvedTheme } = useTheme();
   const [mode, setMode] = React.useState<"week" | "month">("week");
   const [selectedIdx, setSelectedIdx] = React.useState<number | null>(null);
   const [mounted, setMounted] = React.useState(false);
@@ -54,12 +41,6 @@ export function PeriodReview({ trades }: PeriodReviewProps) {
       setSelectedIdx(null);
     }
   }, [periodList]);
-
-  const isDark = resolvedTheme === "dark";
-  const gridColor = isDark ? "#1e293b" : "#e2e8f0";
-  const textColor = isDark ? "#94a3b8" : "#64748b";
-  const tooltipBg = isDark ? "#0f172a" : "#ffffff";
-  const tooltipBorder = isDark ? "#334155" : "#e2e8f0";
 
   if (!mounted) {
     return (
@@ -400,73 +381,6 @@ export function PeriodReview({ trades }: PeriodReviewProps) {
               <span className="text-rose-500">Peor: ${current.worstDayPnl.toFixed(0)}</span>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Gráfico comparativo de todos los periodos auditaos */}
-      <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
-              <span>Historial y Evolución de Todos los {mode === "week" ? "Semanas" : "Meses"}</span>
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Haz clic en una columna para seleccionar y comparar ese periodo
-            </p>
-          </div>
-        </div>
-
-        <div className="h-[250px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={periodList}
-              margin={{ top: 10, right: 10, left: -15, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fill: textColor, fontSize: 11 }}
-                tickLine={false}
-                axisLine={{ stroke: gridColor }}
-              />
-              <YAxis
-                tick={{ fill: textColor, fontSize: 11, fontFamily: "monospace" }}
-                tickLine={false}
-                axisLine={{ stroke: gridColor }}
-              />
-              <ReferenceLine y={0} stroke="#64748b" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: tooltipBg,
-                  borderColor: tooltipBorder,
-                  borderRadius: "0.5rem",
-                  fontSize: "12px",
-                }}
-                formatter={(value: any, name, props) => {
-                  const item = props.payload as PeriodSummary;
-                  return [
-                    `$${Number(value).toLocaleString("en-US", { minimumFractionDigits: 2 })} (${item.tradesCount} trades | WR ${item.winRate}%)`,
-                    "PnL Neto",
-                  ];
-                }}
-              />
-              <Bar
-                dataKey="netPnl"
-                radius={[6, 6, 0, 0]}
-                onClick={(data, idx) => setSelectedIdx(idx)}
-                cursor="pointer"
-              >
-                {periodList.map((entry, i) => (
-                  <Cell
-                    key={`period-${i}`}
-                    fill={entry.netPnl >= 0 ? "#10b981" : "#f43f5e"}
-                    opacity={i === idx ? 1 : 0.6}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
         </div>
       </div>
     </div>
