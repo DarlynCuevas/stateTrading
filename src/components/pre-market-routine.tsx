@@ -86,6 +86,19 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
   // Noticias de hoy para mostrar en el checklist
   const newsStatus = React.useMemo(() => getTodayNewsStatus(), []);
 
+  // Cerrar modales con Escape
+  React.useEffect(() => {
+    if (!modalOpen && !debriefModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setModalOpen(false);
+        setDebriefModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [modalOpen, debriefModalOpen]);
+
   // Cargar rutina de localStorage al montar
   React.useEffect(() => {
     try {
@@ -297,9 +310,15 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
 
       {/* ─── MODAL 1: RUTINA PRE-MERCADO ─── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-          <div className="relative w-full max-w-lg flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden max-h-[92vh]">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-fadeIn overflow-y-auto"
+          onClick={() => setModalOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-lg my-auto flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden max-h-[88vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="shrink-0 p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="h-9 w-9 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
                   <Compass className="h-5 w-5" />
@@ -320,7 +339,7 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
               </button>
             </div>
 
-            <div className="p-5 space-y-5 overflow-y-auto flex-1 text-xs">
+            <div className="p-5 space-y-5 overflow-y-auto flex-1 min-h-0 text-xs">
               {/* 1. Estado mental */}
               <div className="space-y-2">
                 <label className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
@@ -487,9 +506,15 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
 
       {/* ─── MODAL 2: DEBRIEF / CIERRE DE SESIÓN ─── */}
       {debriefModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-          <div className="relative w-full max-w-md flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-fadeIn overflow-y-auto"
+          onClick={() => setDebriefModalOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-md my-auto flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden max-h-[88vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="shrink-0 p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 flex items-center justify-between">
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Check className="h-4 w-4 text-blue-500" />
                 <span>Cierre de Sesión & Debrief Diario</span>
@@ -503,7 +528,7 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
               </button>
             </div>
 
-            <div className="p-5 space-y-4 text-xs">
+            <div className="p-5 space-y-4 overflow-y-auto flex-1 min-h-0 text-xs">
               <div className="space-y-2">
                 <label className="font-semibold text-slate-800 dark:text-slate-200 block">
                   ¿Respetaste tu plan de trading y tus límites de parada hoy?

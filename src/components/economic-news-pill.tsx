@@ -69,6 +69,16 @@ export function EconomicNewsPill({ onOpenFullNews }: { onOpenFullNews?: () => vo
     };
   }, []);
 
+  // Cerrar modal al presionar Escape
+  React.useEffect(() => {
+    if (!modalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setModalOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [modalOpen]);
+
   const { todayEvents, nextEvent, minutesToNext, isImminent, isInHighRiskWindow } = status;
 
   return (
@@ -119,10 +129,16 @@ export function EconomicNewsPill({ onOpenFullNews }: { onOpenFullNews?: () => vo
 
       {/* Modal / Panel del Calendario Económico */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn">
-          <div className="relative w-full max-w-xl flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden max-h-[90vh]">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-fadeIn overflow-y-auto"
+          onClick={() => setModalOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-xl my-auto flex flex-col rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden max-h-[85vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 flex items-center justify-between">
+            <div className="shrink-0 p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/70 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
                   <ShieldAlert className="h-5 w-5" />
@@ -149,7 +165,7 @@ export function EconomicNewsPill({ onOpenFullNews }: { onOpenFullNews?: () => vo
             </div>
 
             {/* Contenido */}
-            <div className="p-5 space-y-5 overflow-y-auto flex-1 text-xs">
+            <div className="p-5 space-y-5 overflow-y-auto flex-1 min-h-0 text-xs">
               {/* Alerta de regla de fondeo */}
               <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
                 <Info className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
@@ -247,7 +263,7 @@ export function EconomicNewsPill({ onOpenFullNews }: { onOpenFullNews?: () => vo
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 flex items-center justify-between gap-2 flex-wrap">
+            <div className="shrink-0 p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 flex items-center justify-between gap-2 flex-wrap">
               <span className="text-[11px] text-slate-400">
                 Horarios ajustados a Europa/Madrid
               </span>
