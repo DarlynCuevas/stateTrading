@@ -97,47 +97,35 @@ export function TradeDetailModal({
 }: TradeDetailModalProps) {
   const [mounted, setMounted] = React.useState(false);
 
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Cerrar al presionar Escape
-  React.useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen || !trade || !mounted || typeof document === "undefined") return null;
-
-  const [setup, setSetup] = React.useState<string>(trade.setup || "Da Vinci");
+  const [setup, setSetup] = React.useState<string>(trade?.setup || "Da Vinci");
   const [customSetup, setCustomSetup] = React.useState<string>("");
-  const [sesion, setSesion] = React.useState<string>(normalizeSession(trade.sesion));
+  const [sesion, setSesion] = React.useState<string>(normalizeSession(trade?.sesion));
   const [resultado, setResultado] = React.useState<string>(
-    trade.resultado || (trade.netPnl > 0 ? "TP" : trade.netPnl < 0 ? "SL" : "BE")
+    trade?.resultado || ((trade?.netPnl ?? 0) > 0 ? "TP" : (trade?.netPnl ?? 0) < 0 ? "SL" : "BE")
   );
-  const [sl, setSl] = React.useState<string>(trade.sl ? String(trade.sl) : "");
-  const [tp, setTp] = React.useState<string>(trade.tp ? String(trade.tp) : "");
+  const [sl, setSl] = React.useState<string>(trade?.sl ? String(trade.sl) : "");
+  const [tp, setTp] = React.useState<string>(trade?.tp ? String(trade.tp) : "");
   const [riesgoUsd, setRiesgoUsd] = React.useState<string>(
-    trade.riesgoUsd ? String(trade.riesgoUsd) : ""
+    trade?.riesgoUsd ? String(trade.riesgoUsd) : ""
   );
   const [rMultiple, setRMultiple] = React.useState<string>(
-    trade.rMultiple ? String(trade.rMultiple) : ""
+    trade?.rMultiple ? String(trade.rMultiple) : ""
   );
-  const [errores, setErrores] = React.useState<string[]>(trade.errores || []);
-  const [aciertos, setAciertos] = React.useState<string[]>(trade.aciertos || []);
-  const [leccion, setLeccion] = React.useState<string>(trade.leccion || "");
-  const [captura, setCaptura] = React.useState<string>(trade.captura || "");
+  const [errores, setErrores] = React.useState<string[]>(trade?.errores || []);
+  const [aciertos, setAciertos] = React.useState<string[]>(trade?.aciertos || []);
+  const [leccion, setLeccion] = React.useState<string>(trade?.leccion || "");
+  const [captura, setCaptura] = React.useState<string>(trade?.captura || "");
   const [capturaPreviewOpen, setCapturaPreviewOpen] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [savedSuccess, setSavedSuccess] = React.useState(false);
 
-  // Sincronizar estado cuando cambia el trade
   React.useEffect(() => {
-    if (trade) {
+    setMounted(true);
+  }, []);
+
+  // Sincronizar estado cuando cambia el trade o se abre el modal
+  React.useEffect(() => {
+    if (trade && isOpen) {
       setSetup(trade.setup || "Da Vinci");
       setCustomSetup("");
       setSesion(normalizeSession(trade.sesion));
@@ -154,10 +142,11 @@ export function TradeDetailModal({
       setCaptura(trade.captura || "");
       setSavedSuccess(false);
     }
-  }, [trade]);
+  }, [trade, isOpen]);
 
   // Soporte para pegar imágenes directamente desde el portapapeles (Cmd/Ctrl + V)
   React.useEffect(() => {
+    if (!isOpen) return;
     const handlePaste = (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       if (!items) return;
@@ -179,10 +168,11 @@ export function TradeDetailModal({
 
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
-  }, []);
+  }, [isOpen]);
 
-  // Cerrar con Escape
+  // Cerrar al presionar Escape
   React.useEffect(() => {
+    if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (capturaPreviewOpen) {
@@ -194,17 +184,18 @@ export function TradeDetailModal({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, capturaPreviewOpen]);
+  }, [isOpen, onClose, capturaPreviewOpen]);
 
   // Cálculo automático sugerido de R-Multiple si hay riesgo en USD
   const calculatedR = React.useMemo(() => {
+    if (!trade) return null;
     const risk = parseFloat(riesgoUsd);
     if (!isNaN(risk) && risk > 0) {
       const r = trade.netPnl / risk;
       return (r >= 0 ? "+" : "") + r.toFixed(2) + "R";
     }
     return null;
-  }, [riesgoUsd, trade.netPnl]);
+  }, [riesgoUsd, trade]);
 
   const toggleError = (err: string) => {
     setErrores((prev) =>
@@ -232,7 +223,7 @@ export function TradeDetailModal({
   };
 
   const handleSave = async () => {
-    if (readOnly) return;
+    if (readOnly || !trade) return;
     setSaving(true);
     try {
       const parsedSl = sl.trim() !== "" ? parseFloat(sl) : null;
@@ -267,6 +258,8 @@ export function TradeDetailModal({
       setSaving(false);
     }
   };
+
+  if (!isOpen || !trade || !mounted || typeof document === "undefined") return null;
 
   const isPositive = trade.netPnl >= 0;
   const isShort =
