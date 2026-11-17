@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { KeyRound, RefreshCw, CheckCircle2, AlertCircle, X, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -11,6 +12,12 @@ interface TradovateModalProps {
 }
 
 export function TradovateModal({ isOpen, onClose, onSyncSuccess }: TradovateModalProps) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [appId, setAppId] = React.useState("StateTrading");
@@ -53,7 +60,7 @@ export function TradovateModal({ isOpen, onClose, onSyncSuccess }: TradovateModa
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted || typeof document === "undefined") return null;
 
   const handleSaveAndSync = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,9 +125,9 @@ export function TradovateModal({ isOpen, onClose, onSyncSuccess }: TradovateModa
     }
   };
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 sm:p-6 animate-fadeIn overflow-y-auto"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-md p-4 sm:p-6 animate-fadeIn overflow-y-auto"
       onClick={onClose}
     >
       <div
@@ -270,6 +277,7 @@ export function TradovateModal({ isOpen, onClose, onSyncSuccess }: TradovateModa
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

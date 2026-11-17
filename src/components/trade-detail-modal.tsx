@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { ParsedTrade } from "@/lib/types";
 import {
   X,
@@ -94,6 +95,12 @@ export function TradeDetailModal({
   accountName,
   readOnly = false,
 }: TradeDetailModalProps) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Cerrar al presionar Escape
   React.useEffect(() => {
     if (!isOpen) return;
@@ -104,7 +111,7 @@ export function TradeDetailModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen || !trade) return null;
+  if (!isOpen || !trade || !mounted || typeof document === "undefined") return null;
 
   const [setup, setSetup] = React.useState<string>(trade.setup || "Da Vinci");
   const [customSetup, setCustomSetup] = React.useState<string>("");
@@ -267,10 +274,10 @@ export function TradeDetailModal({
     trade.type.includes("VENTA") ||
     trade.type === "SELL";
 
-  return (
+  return createPortal(
     <>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/70 backdrop-blur-sm animate-fadeIn overflow-y-auto"
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-md animate-fadeIn overflow-y-auto"
         onClick={onClose}
       >
         <div
@@ -828,6 +835,7 @@ export function TradeDetailModal({
           />
         </div>
       )}
-    </>
+    </>,
+    document.body
   );
 }

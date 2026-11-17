@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { Operation } from "@/lib/operations";
 import { getTodayNewsStatus } from "@/lib/economic-calendar";
 import {
@@ -63,6 +64,12 @@ function normalizeSession(raw?: string | null): string {
 }
 
 export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutineProps) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const todayStr = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
   const storageKey = `statetrading_routine_${todayStr}`;
 
@@ -309,9 +316,9 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
       </div>
 
       {/* ─── MODAL 1: RUTINA PRE-MERCADO ─── */}
-      {modalOpen && (
+      {modalOpen && mounted && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-fadeIn overflow-y-auto"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-slate-950/75 backdrop-blur-md animate-fadeIn overflow-y-auto"
           onClick={() => setModalOpen(false)}
         >
           <div
@@ -501,13 +508,14 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ─── MODAL 2: DEBRIEF / CIERRE DE SESIÓN ─── */}
-      {debriefModalOpen && (
+      {debriefModalOpen && mounted && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-fadeIn overflow-y-auto"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-slate-950/75 backdrop-blur-md animate-fadeIn overflow-y-auto"
           onClick={() => setDebriefModalOpen(false)}
         >
           <div
@@ -590,7 +598,8 @@ export function PreMarketRoutine({ todayOperations, todayPnl }: PreMarketRoutine
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

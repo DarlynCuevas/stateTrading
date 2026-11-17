@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { X, RefreshCw, Monitor, ShieldCheck, Download, CheckCircle2, Terminal } from "lucide-react";
 
 interface SyncDesktopModalProps {
@@ -16,6 +17,12 @@ export function SyncDesktopModal({
   onRefresh,
   refreshing = false,
 }: SyncDesktopModalProps) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Cerrar al presionar Escape
   React.useEffect(() => {
     if (!isOpen) return;
@@ -26,11 +33,11 @@ export function SyncDesktopModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-slate-900/75 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto"
       onClick={onClose}
     >
       <div
@@ -170,6 +177,7 @@ export function SyncDesktopModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

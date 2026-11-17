@@ -837,19 +837,6 @@ export default function Home() {
               </span>
             )}
 
-            <SyncDesktopModal
-              isOpen={showSyncModal}
-              onClose={() => setShowSyncModal(false)}
-              onRefresh={handleRefreshData}
-              refreshing={syncingTV}
-            />
-
-            <ChangePasswordModal
-              isOpen={showChangePasswordModal}
-              onClose={() => setShowChangePasswordModal(false)}
-              userEmail={user?.email}
-            />
-
             {/* Selector móvil de cuenta */}
             <select
               value={selectedAccount}
@@ -1333,7 +1320,18 @@ export default function Home() {
         </main>
       </div>
 
+      <SyncDesktopModal
+        isOpen={showSyncModal}
+        onClose={() => setShowSyncModal(false)}
+        onRefresh={handleRefreshData}
+        refreshing={syncingTV}
+      />
 
+      <ChangePasswordModal
+        isOpen={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
+        userEmail={user?.email}
+      />
     </div>
   );
 }

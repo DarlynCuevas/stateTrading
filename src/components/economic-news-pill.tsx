@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   EconomicEvent,
   getTodayNewsStatus,
@@ -18,9 +19,14 @@ import {
 } from "lucide-react";
 
 export function EconomicNewsPill({ onOpenFullNews }: { onOpenFullNews?: () => void } = {}) {
+  const [mounted, setMounted] = React.useState(false);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [status, setStatus] = React.useState(() => getTodayNewsStatus());
   const [allWeeklyEvents, setAllWeeklyEvents] = React.useState<EconomicEvent[]>(() => getWeeklyEconomicEvents());
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Cargar eventos reales unificados desde /api/news y sincronizar cada 60s
   React.useEffect(() => {
@@ -127,10 +133,10 @@ export function EconomicNewsPill({ onOpenFullNews }: { onOpenFullNews?: () => vo
         )}
       </button>
 
-      {/* Modal / Panel del Calendario Económico */}
-      {modalOpen && (
+      {/* Modal / Panel del Calendario Económico (Teleportado directamente a document.body) */}
+      {modalOpen && mounted && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/70 backdrop-blur-sm animate-fadeIn overflow-y-auto"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-slate-950/75 backdrop-blur-md animate-fadeIn overflow-y-auto"
           onClick={() => setModalOpen(false)}
         >
           <div
@@ -291,7 +297,8 @@ export function EconomicNewsPill({ onOpenFullNews }: { onOpenFullNews?: () => vo
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

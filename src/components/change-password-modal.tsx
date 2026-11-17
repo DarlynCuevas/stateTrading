@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import {
   X,
@@ -25,12 +26,17 @@ export function ChangePasswordModal({
   onClose,
   userEmail,
 }: ChangePasswordModalProps) {
+  const [mounted, setMounted] = React.useState(false);
   const [newPassword, setNewPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const supabase = React.useMemo(() => createClient(), []);
 
@@ -90,9 +96,11 @@ export function ChangePasswordModal({
     }
   };
 
-  return (
+  if (!isOpen || !mounted || typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto"
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-slate-900/75 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto"
       onClick={onClose}
     >
       <div
@@ -223,6 +231,7 @@ export function ChangePasswordModal({
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import {
   ExpenseRecord,
   PayoutRecord,
@@ -55,6 +56,12 @@ export function ExpensesManager({
   readOnly = false,
   traderName,
 }: ExpensesManagerProps) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const [expenses, setExpenses] = React.useState<ExpenseRecord[]>([]);
   const [payouts, setPayouts] = React.useState<PayoutRecord[]>([]);
   const [loading, setLoading] = React.useState<boolean>(true);
@@ -706,9 +713,9 @@ export function ExpensesManager({
       </div>
 
       {/* ─── MODAL: NUEVO GASTO ─── */}
-      {showExpenseModal && (
+      {showExpenseModal && mounted && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-fadeIn overflow-y-auto"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md animate-fadeIn overflow-y-auto"
           onClick={() => setShowExpenseModal(false)}
         >
           <div
@@ -867,13 +874,14 @@ export function ExpensesManager({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ─── MODAL: NUEVO PAYOUT / RETIRO ─── */}
-      {showPayoutModal && (
+      {showPayoutModal && mounted && typeof document !== "undefined" && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm animate-fadeIn overflow-y-auto"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md animate-fadeIn overflow-y-auto"
           onClick={() => setShowPayoutModal(false)}
         >
           <div
@@ -1032,7 +1040,8 @@ export function ExpensesManager({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
