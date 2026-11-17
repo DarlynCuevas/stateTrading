@@ -27,6 +27,8 @@ export interface Account {
   estado?: "activa" | "quemada" | "cancelada" | "superada";
   fechaBaja?: string;
   motivoBaja?: string;
+  fechaCompra?: string; // YYYY-MM-DD o ISO string de compra de la evaluación
+  diasValidez?: number; // Días para pasar la prueba antes de renovación (defecto 30)
 }
 
 export interface OperationPlan {
@@ -106,6 +108,8 @@ interface RawAccount {
   estado?: "activa" | "quemada" | "cancelada" | "superada";
   fechaBaja?: string;
   motivoBaja?: string;
+  fechaCompra?: string; // YYYY-MM-DD o ISO string de compra de la evaluación
+  diasValidez?: number; // Días para pasar la prueba antes de renovación (defecto 30)
 }
 
 interface RawAccountState {

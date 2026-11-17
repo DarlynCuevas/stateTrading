@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { Account, Operation, isAccountBurned } from "@/lib/operations";
 import {
   calculateAccountRiskMetrics,
@@ -24,7 +25,29 @@ import {
   Clock,
   Sparkles,
   Zap,
+  X,
+  Edit3,
 } from "lucide-react";
+
+function formatDateSpanish(dateStr: string): string {
+  try {
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month, day);
+      return d.toLocaleDateString("es-ES", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    }
+    return dateStr;
+  } catch {
+    return dateStr;
+  }
+}
 
 interface PropFirmGuardianProps {
   accounts: Account[];
@@ -39,10 +62,59 @@ export function PropFirmGuardian({
   selectedAccountId,
   onSelectAccount,
 }: PropFirmGuardianProps) {
-  // Filtrar ESTRICTAMENTE cuentas vivas (excluye quemadas, canceladas o con drawdown violado)
-  const activeAccounts = React.useMemo(() => {
-    return accounts.filter((a) => !isAccountBurned(a));
+  const [mounted, setMounted] = React.useState(false);
+  const [editingAccount, setEditingAccount] = React.useState<{
+    id: string;
+    alias: string;
+    fechaCompra: string;
+    diasValidez: number;
+  } | null>(null);
+
+  // Fechas personalizadas guardadas localmente por cuenta
+  const [storedDates, setStoredDates] = React.useState<
+    Record<string, { fechaCompra: string; diasValidez: number }>
+  >({});
+
+  React.useEffect(() => {
+    setMounted(true);
+    const map: Record<string, { fechaCompra: string; diasValidez: number }> = {};
+    for (const a of accounts) {
+      try {
+        const raw = localStorage.getItem(`statetrading_account_dates_${a.id}`);
+        if (raw) {
+          map[a.id] = JSON.parse(raw);
+        }
+      } catch {}
+    }
+    setStoredDates(map);
   }, [accounts]);
+
+  // Cerrar modal al presionar Escape
+  React.useEffect(() => {
+    if (!editingAccount) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEditingAccount(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [editingAccount]);
+
+  // Filtrar ESTRICTAMENTE cuentas vivas y enriquecer con fechas
+  const activeAccounts = React.useMemo(() => {
+    return accounts
+      .filter((a) => !isAccountBurned(a))
+      .map((a) => {
+        const custom = storedDates[a.id];
+        if (custom) {
+          return {
+            ...a,
+            fechaCompra: custom.fechaCompra || a.fechaCompra,
+            diasValidez: custom.diasValidez || a.diasValidez,
+          };
+        }
+        return a;
+      });
+  }, [accounts, storedDates]);
 
   // Métricas calculadas para cada cuenta activa
   const metricsList = React.useMemo(() => {
@@ -170,6 +242,30 @@ export function PropFirmGuardian({
                         >
                           {m.tipo}
                         </span>
+
+                        {m.evaluation.isEvaluation && (
+                          <span
+                            className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                              m.evaluation.urgenciaTiempo === "critico" || m.evaluation.urgenciaTiempo === "vencido"
+                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse"
+                                : m.evaluation.urgenciaTiempo === "proximo"
+                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30"
+                                : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                            }`}
+                            title={`Vence el ${formatDateSpanish(m.evaluation.fechaFin)}`}
+                          >
+                            <Clock className="h-2.5 w-2.5" />
+                            <span>
+                              {m.evaluation.diasRestantes > 1
+                                ? `${m.evaluation.diasRestantes}d`
+                                : m.evaluation.diasRestantes === 1
+                                ? "1d"
+                                : m.evaluation.diasRestantes === 0
+                                ? "Hoy"
+                                : "Vencida"}
+                            </span>
+                          </span>
+                        )}
                       </div>
                       <div className="text-[11px] font-mono text-slate-400 mt-0.5">
                         {m.accountId}
@@ -590,10 +686,240 @@ export function PropFirmGuardian({
                     </div>
                   </div>
                 </div>
+
+                {/* ⏳ CONTROL DE TIEMPO Y VENCIMIENTO DE LA EVALUACIÓN */}
+                <div className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                        Vencimiento & Tiempo de Evaluación
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingAccount({
+                          id: currentAccountMetrics.accountId,
+                          alias: currentAccountMetrics.alias,
+                          fechaCompra: currentAccountMetrics.evaluation.fechaInicio,
+                          diasValidez: currentAccountMetrics.evaluation.diasTotales,
+                        });
+                      }}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
+                      title="Modificar fecha de compra o días de la evaluación"
+                    >
+                      <Calendar className="h-3.5 w-3.5 text-blue-500" />
+                      <span>Ajustar fecha de compra</span>
+                    </button>
+                  </div>
+
+                  {/* Contador principal y estado */}
+                  <div className="flex items-baseline gap-2 flex-wrap">
+                    <span
+                      className={`text-xl font-black font-mono tracking-tight ${
+                        currentAccountMetrics.evaluation.urgenciaTiempo === "vencido"
+                          ? "text-rose-600 dark:text-rose-400"
+                          : currentAccountMetrics.evaluation.urgenciaTiempo === "critico"
+                          ? "text-rose-500 animate-pulse"
+                          : currentAccountMetrics.evaluation.urgenciaTiempo === "proximo"
+                          ? "text-amber-500"
+                          : "text-emerald-500"
+                      }`}
+                    >
+                      {currentAccountMetrics.evaluation.diasRestantes > 1
+                        ? `${currentAccountMetrics.evaluation.diasRestantes} días restantes`
+                        : currentAccountMetrics.evaluation.diasRestantes === 1
+                        ? "¡Último día restante!"
+                        : currentAccountMetrics.evaluation.diasRestantes === 0
+                        ? "¡Vence hoy!"
+                        : `Vencida hace ${Math.abs(currentAccountMetrics.evaluation.diasRestantes)} días`}
+                    </span>
+
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      • Vence el <strong>{formatDateSpanish(currentAccountMetrics.evaluation.fechaFin)}</strong> (Ciclo de {currentAccountMetrics.evaluation.diasTotales} días)
+                    </span>
+                  </div>
+
+                  {/* Barra de progreso de tiempo */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] text-slate-400">
+                      <span>Inicio: {formatDateSpanish(currentAccountMetrics.evaluation.fechaInicio)}</span>
+                      <span>
+                        {currentAccountMetrics.evaluation.diasTranscurridos} de {currentAccountMetrics.evaluation.diasTotales} días ({currentAccountMetrics.evaluation.tiempoUsadoPct.toFixed(0)}%)
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          currentAccountMetrics.evaluation.urgenciaTiempo === "critico" || currentAccountMetrics.evaluation.urgenciaTiempo === "vencido"
+                            ? "bg-rose-500"
+                            : currentAccountMetrics.evaluation.urgenciaTiempo === "proximo"
+                            ? "bg-amber-500"
+                            : "bg-blue-500"
+                        }`}
+                        style={{ width: `${currentAccountMetrics.evaluation.tiempoUsadoPct}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Ritmo objetivo diario si no ha pasado */}
+                  {!currentAccountMetrics.evaluation.isTargetReached && currentAccountMetrics.evaluation.diasRestantes > 0 && (
+                    <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-blue-800 dark:text-blue-300 flex items-center justify-between gap-2 flex-wrap">
+                      <span>🎯 <strong>Ritmo diario sugerido:</strong></span>
+                      <span className="font-mono font-bold">
+                        ~${currentAccountMetrics.evaluation.ritmoDiarioNecesario.toLocaleString("en-US")}/día en los {currentAccountMetrics.evaluation.diasRestantes} días restantes
+                      </span>
+                    </div>
+                  )}
+
+                  {currentAccountMetrics.evaluation.urgenciaTiempo === "critico" && (
+                    <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300">
+                      ⚠️ <strong>Atención:</strong> Quedan menos de 3 días para el cierre de tu ciclo de facturación mensual. Si no alcanzas el objetivo a tiempo, la empresa te cobrará la cuota de renovación.
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
         </div>
+      )}
+
+      {/* Modal para ajustar Fecha de Compra / Validez */}
+      {editingAccount && mounted && typeof document !== "undefined" && createPortal(
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-slate-950/75 backdrop-blur-md animate-fadeIn overflow-y-auto"
+          onClick={() => setEditingAccount(null)}
+        >
+          <div
+            className="relative w-full max-w-md my-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 text-slate-900 dark:text-slate-100 space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+                  <Calendar className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    Ajustar Fechas de Evaluación
+                  </h3>
+                  <p className="text-[11px] text-slate-400 font-mono">
+                    {editingAccount.alias}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingAccount(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!editingAccount) return;
+                const payload = {
+                  fechaCompra: editingAccount.fechaCompra,
+                  diasValidez: Number(editingAccount.diasValidez) || 30,
+                };
+                try {
+                  localStorage.setItem(`statetrading_account_dates_${editingAccount.id}`, JSON.stringify(payload));
+                } catch {}
+                setStoredDates((prev) => ({
+                  ...prev,
+                  [editingAccount.id]: payload,
+                }));
+                setEditingAccount(null);
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div className="space-y-1.5">
+                <label className="font-semibold text-slate-700 dark:text-slate-300 block">
+                  Fecha de Compra / Inicio:
+                </label>
+                <input
+                  type="date"
+                  value={editingAccount.fechaCompra}
+                  onChange={(e) =>
+                    setEditingAccount((prev) =>
+                      prev ? { ...prev, fechaCompra: e.target.value } : null
+                    )
+                  }
+                  required
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+                <span className="text-[10px] text-slate-400">
+                  Día en que adquiriste la prueba en la web de la empresa de fondeo
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-slate-700 dark:text-slate-300 block">
+                  Días de validez (Ciclo de renovación mensual):
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={editingAccount.diasValidez}
+                  onChange={(e) =>
+                    setEditingAccount((prev) =>
+                      prev ? { ...prev, diasValidez: parseInt(e.target.value, 10) || 30 } : null
+                    )
+                  }
+                  required
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                />
+                <div className="flex items-center gap-1.5 pt-1">
+                  {[
+                    { label: "30 días (1 mes)", val: 30 },
+                    { label: "60 días", val: 60 },
+                    { label: "15 días", val: 15 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.val}
+                      type="button"
+                      onClick={() =>
+                        setEditingAccount((prev) =>
+                          prev ? { ...prev, diasValidez: preset.val } : null
+                        )
+                      }
+                      className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed">
+                💡 El Guardián calculará automáticamente la cuenta regresiva de días restantes y tu ritmo diario necesario.
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingAccount(null)}
+                  className="px-3.5 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm shadow-blue-500/20"
+                >
+                  Guardar Fechas
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

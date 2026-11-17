@@ -38,7 +38,7 @@ export interface AccountRiskMetrics {
     isEligible: boolean;
   };
 
-  // Reglas de Evaluación (Pase de Prueba)
+  // Reglas de Evaluación (Pase de Prueba y Tiempo)
   evaluation: {
     isEvaluation: boolean;
     profitTarget: number;
@@ -46,6 +46,15 @@ export interface AccountRiskMetrics {
     progressPct: number;
     remainingToTarget: number;
     isTargetReached: boolean;
+    // Control temporal de evaluación
+    fechaInicio: string;
+    fechaFin: string;
+    diasTotales: number;
+    diasRestantes: number;
+    diasTranscurridos: number;
+    tiempoUsadoPct: number;
+    ritmoDiarioNecesario: number;
+    urgenciaTiempo: "normal" | "proximo" | "critico" | "vencido";
   };
 }
 
@@ -182,13 +191,57 @@ export function calculateAccountRiskMetrics(
     withdrawableAmount > 0 &&
     isConsistent;
 
-  // 5. Reglas de Evaluación
+  // 5. Reglas de Evaluación y Control de Tiempo
   const isEvaluation = !isFunded;
   const profitTarget = account.reglas?.objetivoBeneficio || getDefaultProfitTarget(balanceInicial);
   const currentProfit = Math.max(0, balance - balanceInicial);
   const progressPct = Math.min(100, Math.max(0, (currentProfit / profitTarget) * 100));
   const remainingToTarget = Math.max(0, profitTarget - currentProfit);
   const isTargetReached = currentProfit >= profitTarget;
+
+  // Cálculo de Tiempo Límite de Evaluación
+  let fechaInicioStr = account.fechaCompra || "";
+  if (!fechaInicioStr) {
+    const accountOps = operations
+      .filter((op) => op.cuentaId === account.id && op.openTime)
+      .sort((a, b) => new Date(a.openTime).getTime() - new Date(b.openTime).getTime());
+    if (accountOps.length > 0 && accountOps[0].openTime) {
+      fechaInicioStr = accountOps[0].openTime.slice(0, 10);
+    } else {
+      fechaInicioStr = new Date().toISOString().slice(0, 10);
+    }
+  }
+
+  const diasTotales = account.diasValidez || 30;
+  const startDate = new Date(fechaInicioStr);
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + diasTotales);
+
+  const now = new Date();
+  const nowMs = now.getTime();
+  const startMs = startDate.getTime();
+  const endMs = endDate.getTime();
+
+  const diffMs = endMs - nowMs;
+  const diasRestantes = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const diasTranscurridos = Math.max(0, Math.floor((nowMs - startMs) / (1000 * 60 * 60 * 24)));
+  const tiempoUsadoPct = Math.min(100, Math.max(0, (diasTranscurridos / diasTotales) * 100));
+
+  let urgenciaTiempo: "normal" | "proximo" | "critico" | "vencido" = "normal";
+  if (diasRestantes < 0) {
+    urgenciaTiempo = "vencido";
+  } else if (diasRestantes <= 3) {
+    urgenciaTiempo = "critico";
+  } else if (diasRestantes <= 8) {
+    urgenciaTiempo = "proximo";
+  } else {
+    urgenciaTiempo = "normal";
+  }
+
+  const ritmoDiarioNecesario =
+    isTargetReached || diasRestantes <= 0
+      ? 0
+      : Math.round(remainingToTarget / Math.max(1, diasRestantes));
 
   return {
     accountId: account.id,
@@ -230,6 +283,14 @@ export function calculateAccountRiskMetrics(
       progressPct,
       remainingToTarget,
       isTargetReached,
+      fechaInicio: fechaInicioStr,
+      fechaFin: endDate.toISOString().slice(0, 10),
+      diasTotales,
+      diasRestantes,
+      diasTranscurridos,
+      tiempoUsadoPct,
+      ritmoDiarioNecesario,
+      urgenciaTiempo,
     },
   };
 }
