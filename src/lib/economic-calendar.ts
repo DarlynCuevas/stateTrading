@@ -61,7 +61,7 @@ export function getWeeklyEconomicEvents(referenceDate: Date = new Date()): Econo
   events.push(
     createEvent(
       1,
-      13,
+      14,
       30,
       "Ventas Minoristas Subyacentes (Core)",
       "Gasto del consumidor sin automóviles. Alta volatilidad en futuros de índices.",
@@ -70,7 +70,7 @@ export function getWeeklyEconomicEvents(referenceDate: Date = new Date()): Econo
     ),
     createEvent(
       1,
-      13,
+      14,
       30,
       "Ventas Minoristas Mensuales",
       "Indicador clave de consumo de los hogares en EE.UU.",

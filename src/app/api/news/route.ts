@@ -669,9 +669,24 @@ async function fetchEconomicCalendar(): Promise<EconomicCalendarItem[]> {
       else if (item.impact === "Holiday") impact = "HOLIDAY";
 
       const eventDate = new Date(item.date);
-      const timeStr = !isNaN(eventDate.getTime())
-        ? `${String(eventDate.getHours()).padStart(2, "0")}:${String(eventDate.getMinutes()).padStart(2, "0")}`
+      const isValid = !isNaN(eventDate.getTime());
+
+      // Formatear siempre en la zona horaria de España / Madrid (CET, UTC+1 / CEST, UTC+2)
+      // para evitar desfases con servidores que operan en UTC
+      const timeStr = isValid
+        ? eventDate.toLocaleTimeString("es-ES", {
+            timeZone: "Europe/Madrid",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          })
         : "14:30";
+
+      const dateStr = isValid
+        ? eventDate.toLocaleDateString("en-CA", {
+            timeZone: "Europe/Madrid",
+          })
+        : item.date.slice(0, 10);
 
       const translated = translateEvent(item.title);
 
@@ -679,7 +694,7 @@ async function fetchEconomicCalendar(): Promise<EconomicCalendarItem[]> {
         id: `ff-${item.date}-${item.title.replace(/\s+/g, "_")}`,
         title: translated.title,
         country: item.country,
-        date: item.date.slice(0, 10),
+        date: dateStr,
         time: timeStr,
         impact,
         forecast: item.forecast || "-",
