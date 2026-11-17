@@ -17,7 +17,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-export function EconomicNewsPill() {
+export function EconomicNewsPill({ onOpenFullNews }: { onOpenFullNews?: () => void } = {}) {
   const [modalOpen, setModalOpen] = React.useState(false);
   const [status, setStatus] = React.useState(() => getTodayNewsStatus());
   const [allWeeklyEvents, setAllWeeklyEvents] = React.useState<EconomicEvent[]>([]);
@@ -211,17 +211,32 @@ export function EconomicNewsPill() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 flex items-center justify-between">
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80 flex items-center justify-between gap-2 flex-wrap">
               <span className="text-[11px] text-slate-400">
-                Horarios ajustados automáticamente a Europa/Madrid
+                Horarios ajustados a Europa/Madrid
               </span>
-              <button
-                type="button"
-                onClick={() => setModalOpen(false)}
-                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition-colors"
-              >
-                Cerrar
-              </button>
+              <div className="flex items-center gap-2">
+                {onOpenFullNews && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalOpen(false);
+                      onOpenFullNews();
+                    }}
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center gap-1.5 shadow-sm"
+                  >
+                    <span>Ver Noticias & Mercado</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition-colors"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>

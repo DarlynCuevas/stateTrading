@@ -47,6 +47,7 @@ import {
   Flame,
   Eye,
   Receipt,
+  Newspaper,
 } from "lucide-react";
 import { SyncDesktopModal } from "@/components/sync-desktop-modal";
 import { ChangePasswordModal } from "@/components/change-password-modal";
@@ -56,6 +57,7 @@ import { EconomicNewsPill } from "@/components/economic-news-pill";
 import { PreMarketRoutine } from "@/components/pre-market-routine";
 import { SweetSpotHeatmap } from "@/components/sweet-spot-heatmap";
 import { ExpensesManager } from "@/components/expenses-manager";
+import { NewsSection } from "@/components/news-section";
 
 // ─── Convierte una Operation del JSON a ParsedTrade para los gráficos/stats ───
 function operationToParsedTrade(op: Operation): ParsedTrade {
@@ -94,11 +96,21 @@ function operationToParsedTrade(op: Operation): ParsedTrade {
   };
 }
 
-// ─── Helper: semana ISO ─────────────────────────────────────────────
+// ─── Helper: semana ISO (comienza el lunes a las 00:00:00) ──────────
 function getWeekRange() {
   const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  return { now, weekAgo };
+  const dayOfWeek = now.getDay(); // 0 = Domingo, 1 = Lunes, etc.
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const startOfWeek = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + diffToMonday,
+    0,
+    0,
+    0,
+    0
+  );
+  return { now, weekAgo: startOfWeek };
 }
 
 export default function Home() {
@@ -351,7 +363,7 @@ export default function Home() {
 
   // ─── Tab activo ───────────────────────────────────────────────────
   const [activeTab, setActiveTab] = React.useState<
-    "dashboard" | "guardian" | "review" | "calendar" | "table" | "accounts" | "expenses"
+    "dashboard" | "guardian" | "review" | "calendar" | "table" | "accounts" | "expenses" | "news"
   >("dashboard");
 
   // ─── Verificar sesión al montar + escuchar cambios ────────────────
@@ -636,6 +648,12 @@ export default function Home() {
                   color: "text-emerald-500",
                 },
                 {
+                  id: "news",
+                  label: "Noticias & Mercado",
+                  Icon: Newspaper,
+                  color: "text-blue-500",
+                },
+                {
                   id: "accounts",
                   label: "Historial de Cuentas",
                   Icon: ShieldAlert,
@@ -859,7 +877,7 @@ export default function Home() {
                 </optgroup>
               )}
             </select>
-            <EconomicNewsPill />
+            <EconomicNewsPill onOpenFullNews={() => setActiveTab("news")} />
             <ThemeToggle />
             <button
               onClick={() => setShowChangePasswordModal(true)}
@@ -917,7 +935,7 @@ export default function Home() {
 
           {/* Mobile tabs */}
           <div className="flex md:hidden border-b border-slate-200 dark:border-slate-800 pb-2 gap-4 text-xs font-semibold overflow-x-auto">
-            {(["dashboard", "guardian", "review", "calendar", "table", "accounts", "expenses"] as const).map(
+            {(["dashboard", "guardian", "review", "calendar", "table", "news", "accounts", "expenses"] as const).map(
               (tab) => (
                 <button
                   key={tab}
@@ -934,11 +952,13 @@ export default function Home() {
                     ? "Resumen"
                     : tab === "table"
                       ? `Diario (${parsedTrades.length})`
-                      : tab === "accounts"
-                        ? `Cuentas (${inactiveAccounts.length})`
-                        : tab === "expenses"
-                          ? "Gastos & ROI"
-                          : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      : tab === "news"
+                        ? "Noticias"
+                        : tab === "accounts"
+                          ? `Cuentas (${inactiveAccounts.length})`
+                          : tab === "expenses"
+                            ? "Gastos & ROI"
+                            : tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
               ),
             )}
@@ -1301,6 +1321,13 @@ export default function Home() {
                 readOnly={isReadOnly}
                 traderName={viewingTrader?.nombre || viewingTrader?.alias}
               />
+            </section>
+          )}
+
+          {/* ─── TAB: NEWS & CALENDAR ─── */}
+          {activeTab === "news" && (
+            <section className="space-y-4 animate-fadeIn">
+              <NewsSection />
             </section>
           )}
         </main>
