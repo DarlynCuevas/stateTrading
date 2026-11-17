@@ -127,16 +127,19 @@ async function extractTradingViewData(port = 9222) {
         if (!broker) return { error: "No hay broker conectado en TradingView" };
         const conn = broker._brokerConnection;
 
-        const POINT_VALUES = {
-          'MNQ': 2, 'NQ': 20, 'MES': 5, 'ES': 50,
-          'MGC': 10, 'GC': 100, 'MYM': 0.5, 'YM': 5,
-          'M2K': 10, 'RTY': 50
-        };
-
         function getPointValue(sym) {
-          for (let k in POINT_VALUES) {
-            if (sym.includes(k)) return POINT_VALUES[k];
-          }
+          const upper = String(sym).toUpperCase();
+          // Evaluar siempre primero los contratos Micro para que 'MNQ' no sea interceptado por 'NQ'
+          if (upper.includes('MNQ')) return 2;
+          if (upper.includes('NQ')) return 20;
+          if (upper.includes('MES')) return 5;
+          if (upper.includes('ES')) return 50;
+          if (upper.includes('MGC')) return 10;
+          if (upper.includes('GC')) return 100;
+          if (upper.includes('MYM')) return 0.5;
+          if (upper.includes('YM')) return 5;
+          if (upper.includes('M2K')) return 10;
+          if (upper.includes('RTY')) return 50;
           return 1;
         }
 
@@ -234,11 +237,89 @@ async function extractTradingViewData(port = 9222) {
               }
             }
 
+            // RECOLECCIÓN MULTI-ACTIVO: Recoger ejecuciones de todas las fuentes internas de TradingView
+            // para no limitarse únicamente al símbolo abierto en el gráfico (_tvExecutions)
+            const allExecs = [];
+            const seenExecKeys = new Set();
+
+            function addExec(rawE) {
+              if (!rawE) return;
+              const sym = rawE.symbolDisplayName || rawE.symbol || "";
+              if (!sym) return;
+              const price = parseFloat(rawE.price || rawE.avgPrice) || 0;
+              const qty = parseFloat(rawE.qty || rawE.filledQty) || 1;
+              const time = rawE.time ? new Date(rawE.time).getTime() : (rawE.timestamp ? new Date(rawE.timestamp).getTime() : Date.now());
+              const sideStr = String(rawE.side || rawE.type || "").toLowerCase();
+              const side = sideStr.includes("buy") || sideStr.includes("compra") || rawE.side === 1 ? 1 : 2;
+              const id = String(rawE.id || rawE.execId || rawE.orderId || `${sym}-${time}-${price}`);
+
+              // Clave de desduplicación temporal (margen de 2 segundos)
+              const dedupKey = `${sym}-${price}-${qty}-${side}-${Math.floor(time / 2000)}`;
+              if (seenExecKeys.has(dedupKey)) return;
+              seenExecKeys.add(dedupKey);
+
+              allExecs.push({
+                id,
+                symbol: sym,
+                symbolDisplayName: sym,
+                side,
+                price,
+                qty,
+                time,
+                accountId: rawE.accountId || rawE.account,
+                accountName: rawE.accountName || rawE.account
+              });
+            }
+
+            // 1. Ejecuciones del gráfico activo
+            if (conn && conn._tvExecutions && Array.isArray(conn._tvExecutions)) {
+              conn._tvExecutions.forEach(addExec);
+            }
+            if (conn && conn._fills && Array.isArray(conn._fills)) {
+              conn._fills.forEach(addExec);
+            }
+            if (conn && conn._executions && Array.isArray(conn._executions)) {
+              conn._executions.forEach(addExec);
+            }
+
+            // 2. Órdenes ejecutadas multi-activo (NQ, MNQ, MGC, MES, etc.)
+            const rawOrders = (conn && conn._orders) ? conn._orders : (broker && broker._orders ? broker._orders : []);
+            if (Array.isArray(rawOrders)) {
+              for (let o of rawOrders) {
+                if (o && (o.status === 6 || o.status === 2 || o.filledQty > 0 || String(o.statusText).toLowerCase() === 'filled')) {
+                  addExec({
+                    id: 'ord-' + (o.id || o.orderId),
+                    symbol: o.symbol || o.symbolDisplayName,
+                    symbolDisplayName: o.symbolDisplayName || o.symbol,
+                    side: o.side,
+                    price: o.avgPrice || o.price,
+                    qty: o.filledQty || o.qty || 1,
+                    time: o.time || o.timestamp || Date.now(),
+                    accountId: o.accountId || o.account,
+                    accountName: o.accountName || o.account
+                  });
+                }
+              }
+            }
+
+            // 3. Filas del gestor de cuentas (tabla de ejecuciones del panel inferior)
+            if (conn && conn._accountManagerTablesData) {
+              for (let tableKey in conn._accountManagerTablesData) {
+                const tableData = conn._accountManagerTablesData[tableKey];
+                const rows = Array.isArray(tableData) ? tableData : (Array.isArray(tableData?.[0]) ? tableData[0] : []);
+                if (Array.isArray(rows)) {
+                  for (let r of rows) {
+                    if (r && (r.execId || (r.price && r.qty && r.symbol))) {
+                      addExec(r);
+                    }
+                  }
+                }
+              }
+            }
+
             // FILTRADO ESTRICTO DE EJECUCIONES POR CUENTA:
-            // Cada trade debe pertenecer exclusivamente a la cuenta en la que se ejecutó
             const accIdStr = String(acc.id || "");
             const finalNameStr = String(finalName || "");
-            const allExecs = (conn && conn._tvExecutions) ? [...conn._tvExecutions] : [];
             const execs = allExecs.filter(e => {
               if (accountsToScan.length === 1) return true;
               const eAccId = String(e.accountId || e.account || "");

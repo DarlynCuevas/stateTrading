@@ -93,20 +93,96 @@ export async function extractTradingViewDesktopData(port = 9222): Promise<TVExtr
           }
         }
 
-        // 3. Extraer EJECUCIONES REALES emparejadas (Round-trip FIFO)
-        const execs = (conn && conn._tvExecutions) ? [...conn._tvExecutions] : [];
+        // 3. Extraer EJECUCIONES REALES emparejadas (Multi-activo: NQ, MNQ, MGC, MES, etc.)
+        const allExecs: any[] = [];
+        const seenExecKeys = new Set();
+
+        function addExec(rawE: any) {
+          if (!rawE) return;
+          const sym = rawE.symbolDisplayName || rawE.symbol || "";
+          if (!sym) return;
+          const price = parseFloat(rawE.price || rawE.avgPrice) || 0;
+          const qty = parseFloat(rawE.qty || rawE.filledQty) || 1;
+          const time = rawE.time ? new Date(rawE.time).getTime() : (rawE.timestamp ? new Date(rawE.timestamp).getTime() : Date.now());
+          const sideStr = String(rawE.side || rawE.type || "").toLowerCase();
+          const side = sideStr.includes("buy") || sideStr.includes("compra") || rawE.side === 1 ? 1 : 2;
+          const id = String(rawE.id || rawE.execId || rawE.orderId || (sym + "-" + time + "-" + price));
+
+          const dedupKey = sym + "-" + price + "-" + qty + "-" + side + "-" + Math.floor(time / 2000);
+          if (seenExecKeys.has(dedupKey)) return;
+          seenExecKeys.add(dedupKey);
+
+          allExecs.push({
+            id,
+            symbol: sym,
+            symbolDisplayName: sym,
+            side,
+            price,
+            qty,
+            time,
+            accountId: rawE.accountId || rawE.account,
+            accountName: rawE.accountName || rawE.account
+          });
+        }
+
+        if (conn && conn._tvExecutions && Array.isArray(conn._tvExecutions)) {
+          conn._tvExecutions.forEach(addExec);
+        }
+        if (conn && conn._fills && Array.isArray(conn._fills)) {
+          conn._fills.forEach(addExec);
+        }
+        if (conn && conn._executions && Array.isArray(conn._executions)) {
+          conn._executions.forEach(addExec);
+        }
+
+        const rawOrders = (conn && conn._orders) ? conn._orders : (broker && broker._orders ? broker._orders : []);
+        if (Array.isArray(rawOrders)) {
+          for (let o of rawOrders) {
+            if (o && (o.status === 6 || o.status === 2 || o.filledQty > 0 || String(o.statusText).toLowerCase() === 'filled')) {
+              addExec({
+                id: 'ord-' + (o.id || o.orderId),
+                symbol: o.symbol || o.symbolDisplayName,
+                symbolDisplayName: o.symbolDisplayName || o.symbol,
+                side: o.side,
+                price: o.avgPrice || o.price,
+                qty: o.filledQty || o.qty || 1,
+                time: o.time || o.timestamp || Date.now(),
+                accountId: o.accountId || o.account,
+                accountName: o.accountName || o.account
+              });
+            }
+          }
+        }
+
+        if (conn && conn._accountManagerTablesData) {
+          for (let tableKey in conn._accountManagerTablesData) {
+            const tableData = conn._accountManagerTablesData[tableKey];
+            const rows = Array.isArray(tableData) ? tableData : (Array.isArray(tableData?.[0]) ? tableData[0] : []);
+            if (Array.isArray(rows)) {
+              for (let r of rows) {
+                if (r && (r.execId || (r.price && r.qty && r.symbol))) {
+                  addExec(r);
+                }
+              }
+            }
+          }
+        }
+
+        const execs = allExecs;
         execs.sort((a: any, b: any) => a.time - b.time);
 
-        const POINT_VALUES: Record<string, number> = {
-          'MNQ': 2, 'NQ': 20, 'MES': 5, 'ES': 50,
-          'MGC': 10, 'GC': 100, 'MYM': 0.5, 'YM': 5,
-          'M2K': 10, 'RTY': 50
-        };
-
         function getPointValue(sym: string) {
-          for (let k in POINT_VALUES) {
-            if (sym.includes(k)) return POINT_VALUES[k];
-          }
+          const upper = String(sym).toUpperCase();
+          if (upper.includes('MNQ')) return 2;
+          if (upper.includes('NQ')) return 20;
+          if (upper.includes('MES')) return 5;
+          if (upper.includes('ES')) return 50;
+          if (upper.includes('MGC')) return 10;
+          if (upper.includes('GC')) return 100;
+          if (upper.includes('MYM')) return 0.5;
+          if (upper.includes('YM')) return 5;
+          if (upper.includes('M2K')) return 10;
+          if (upper.includes('RTY')) return 50;
           return 1;
         }
 
