@@ -247,10 +247,10 @@ async function extractTradingViewData(port = 9222) {
               const time = rawE.time ? new Date(rawE.time).getTime() : (rawE.timestamp ? new Date(rawE.timestamp).getTime() : Date.now());
               const sideStr = String(rawE.side || rawE.type || "").toLowerCase();
               const side = sideStr.includes("buy") || sideStr.includes("compra") || rawE.side === 1 ? 1 : 2;
-              const id = String(rawE.id || rawE.execId || rawE.orderId || `${sym}-${time}-${price}`);
+              const id = String(rawE.id || rawE.execId || rawE.orderId || (sym + "-" + time + "-" + price));
 
               // Clave de desduplicación temporal (margen de 2 segundos)
-              const dedupKey = `${sym}-${price}-${qty}-${side}-${Math.floor(time / 2000)}`;
+              const dedupKey = sym + "-" + price + "-" + qty + "-" + side + "-" + Math.floor(time / 2000);
               if (seenExecKeys.has(dedupKey)) return;
               seenExecKeys.add(dedupKey);
 

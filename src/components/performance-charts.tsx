@@ -41,6 +41,7 @@ interface PerformanceChartsProps {
   pnlDistribution?: PnlDistributionBucket[];
   hourlyData?: HourlyPerformance[];
   initialBalance?: number;
+  currentBalance?: number;
 }
 
 export function PerformanceCharts({
@@ -50,6 +51,7 @@ export function PerformanceCharts({
   pnlDistribution = [],
   hourlyData = [],
   initialBalance = 50000,
+  currentBalance,
 }: PerformanceChartsProps) {
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
@@ -67,7 +69,9 @@ export function PerformanceCharts({
   const tooltipBorder = isDark ? "#334155" : "#e2e8f0";
 
   // Determinar si el balance final está en verde o en rojo respecto al capital inicial
-  const finalBalance = equityData.length > 0 ? equityData[equityData.length - 1].balance : initialBalance;
+  const finalBalance = currentBalance !== undefined
+    ? currentBalance
+    : (equityData.length > 0 ? equityData[equityData.length - 1].balance : initialBalance);
   const isEquityPositive = finalBalance >= initialBalance;
   const strokeColor = isEquityPositive ? "#10b981" : "#f43f5e"; // emerald-500 vs rose-500
 

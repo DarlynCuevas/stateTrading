@@ -407,16 +407,36 @@ export default function Home() {
     setUser(null);
   };
 
+  // ─── Orden cronológico para métricas y evolución temporal ────────
+  const chronologicalTrades = React.useMemo(() => {
+    return [...parsedTrades].sort((a, b) => {
+      const timeA = new Date(a.openTime).getTime() || 0;
+      const timeB = new Date(b.openTime).getTime() || 0;
+      return timeA - timeB;
+    });
+  }, [parsedTrades]);
+
   // ─── Cálculos estadísticos ────────────────────────────────────────
   const stats: AccountStats = React.useMemo(() => {
-    const base = calculateAccountStats(parsedTrades, realInitialBalance);
-    // Sobreescribimos currentBalance con el balance real del JSON
-    return { ...base, currentBalance: realBalance, initialBalance: realInitialBalance };
-  }, [parsedTrades, realBalance, realInitialBalance]);
+    const base = calculateAccountStats(chronologicalTrades, realInitialBalance);
+    const diffNet = realBalance - realInitialBalance;
+    // Si hay discrepancia entre los trades registrados y el balance real de la cuenta (por comisiones/fees
+    // de la prop firm no desglosadas o saldo de arranque), se garantiza coherencia matemática estricta
+    const netPnlExacto = parsedTrades.length > 0 && realBalance > 0
+      ? Number(diffNet.toFixed(2))
+      : base.totalNetPnl;
+
+    return {
+      ...base,
+      currentBalance: realBalance,
+      initialBalance: realInitialBalance,
+      totalNetPnl: netPnlExacto,
+    };
+  }, [chronologicalTrades, parsedTrades.length, realBalance, realInitialBalance]);
 
   const equityData = React.useMemo(
-    () => generateEquityCurve(parsedTrades, realInitialBalance),
-    [parsedTrades, realInitialBalance],
+    () => generateEquityCurve(chronologicalTrades, realInitialBalance, realBalance),
+    [chronologicalTrades, realInitialBalance, realBalance],
   );
 
   const dailyData = React.useMemo(
@@ -1138,6 +1158,7 @@ export default function Home() {
                   pnlDistribution={pnlDistribution}
                   hourlyData={hourlyData}
                   initialBalance={realInitialBalance}
+                  currentBalance={realBalance}
                 />
               </section>
 

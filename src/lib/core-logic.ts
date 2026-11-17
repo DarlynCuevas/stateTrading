@@ -672,7 +672,18 @@ export function calculateAccountStats(trades: ParsedTrade[], initialBalance = 50
 /**
  * Genera la serie temporal de evolución del saldo para el Gráfico de Equity Curve.
  */
-export function generateEquityCurve(trades: ParsedTrade[], initialBalance = 50000) {
+export function generateEquityCurve(
+  trades: ParsedTrade[],
+  initialBalance = 50000,
+  currentBalance?: number
+) {
+  // Asegurar que las operaciones se procesan siempre en orden cronológico estricto
+  const sortedTrades = [...trades].sort((a, b) => {
+    const timeA = new Date(a.openTime).getTime() || 0;
+    const timeB = new Date(b.openTime).getTime() || 0;
+    return timeA - timeB;
+  });
+
   const data = [
     {
       tradeNumber: 0,
@@ -685,7 +696,7 @@ export function generateEquityCurve(trades: ParsedTrade[], initialBalance = 5000
 
   let runningBalance = initialBalance;
 
-  trades.forEach((t, idx) => {
+  sortedTrades.forEach((t, idx) => {
     runningBalance += t.netPnl;
     // Formatear hora corta (ej: 03-07 20:25)
     let shortTime = t.openTime;
@@ -708,6 +719,13 @@ export function generateEquityCurve(trades: ParsedTrade[], initialBalance = 5000
       symbol: t.symbol,
     });
   });
+
+  // Si se proporciona el saldo actual real de la cuenta y hay operaciones,
+  // reconciliamos el último punto para que coincida exactamente con el saldo verificado del broker
+  if (currentBalance !== undefined && data.length > 1) {
+    const lastIdx = data.length - 1;
+    data[lastIdx].balance = Number(currentBalance.toFixed(2));
+  }
 
   return data;
 }
