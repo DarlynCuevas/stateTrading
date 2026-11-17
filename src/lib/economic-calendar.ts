@@ -56,17 +56,26 @@ export function getWeeklyEconomicEvents(referenceDate: Date = new Date()): Econo
     };
   };
 
-  // Eventos recurrentes estándar de alta volatilidad (horarios en CET/CEST - Madrid):
+  // Eventos de alta volatilidad estándar:
   // Martes (dayOffset 1)
   events.push(
     createEvent(
       1,
-      16,
-      0,
-      "JOLTs Job Openings",
-      "Encuesta de ofertas de empleo. Alta volatilidad en apertura/primeros 30 min.",
-      "7.45M",
-      "7.44M"
+      13,
+      30,
+      "Ventas Minoristas Subyacentes (Core)",
+      "Gasto del consumidor sin automóviles. Alta volatilidad en futuros de índices.",
+      "0.3%",
+      "0.5%"
+    ),
+    createEvent(
+      1,
+      13,
+      30,
+      "Ventas Minoristas Mensuales",
+      "Indicador clave de consumo de los hogares en EE.UU.",
+      "0.4%",
+      "0.4%"
     )
   );
 
@@ -144,16 +153,27 @@ export function getWeeklyEconomicEvents(referenceDate: Date = new Date()): Econo
 /**
  * Obtiene las noticias de hoy y calcula el estado y tiempo restante
  */
-export function getTodayNewsStatus(referenceDate: Date = new Date()) {
-  const events = getWeeklyEconomicEvents(referenceDate);
-  const todayStr = referenceDate.toISOString().slice(0, 10);
+export function getTodayNewsStatus(
+  referenceDate: Date = new Date(),
+  customEvents?: EconomicEvent[]
+) {
+  const events = customEvents && customEvents.length > 0 ? customEvents : getWeeklyEconomicEvents(referenceDate);
+  
+  // Fecha local YYYY-MM-DD
+  const year = referenceDate.getFullYear();
+  const month = String(referenceDate.getMonth() + 1).padStart(2, "0");
+  const day = String(referenceDate.getDate()).padStart(2, "0");
+  const todayStr = `${year}-${month}-${day}`;
 
-  const todayEvents = events.filter((e) => e.dateTime.slice(0, 10) === todayStr);
+  const todayEvents = events.filter((e) => {
+    const eventDateStr = e.dateTime.slice(0, 10);
+    return eventDateStr === todayStr && (e.impact === "HIGH" || !e.impact);
+  });
 
   const nowMs = referenceDate.getTime();
 
   // Encontrar la próxima noticia más cercana
-  const upcomingEvents = todayEvents.filter((e) => new Date(e.dateTime).getTime() >= nowMs - 10 * 60 * 1000);
+  const upcomingEvents = todayEvents.filter((e) => new Date(e.dateTime).getTime() >= nowMs - 15 * 60 * 1000);
   const nextEvent = upcomingEvents[0] || null;
 
   let minutesToNext: number | null = null;
@@ -167,8 +187,8 @@ export function getTodayNewsStatus(referenceDate: Date = new Date()) {
 
     // Ventana de riesgo: 5 minutos antes o 5 minutos después del evento
     isInHighRiskWindow = minutesToNext <= 5 && minutesToNext >= -5;
-    // Inminente: menos de 45 minutos
-    isImminent = minutesToNext > 0 && minutesToNext <= 45;
+    // Inminente: menos de 60 minutos
+    isImminent = minutesToNext > 0 && minutesToNext <= 60;
   }
 
   return {

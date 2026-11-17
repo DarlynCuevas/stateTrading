@@ -29,6 +29,43 @@ import {
   Globe,
 } from "lucide-react";
 
+function formatDateHeader(dateStr: string): string {
+  try {
+    const parts = dateStr.split("-");
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const eventDate = new Date(year, month, day);
+
+      const now = new Date();
+      const isToday =
+        now.getFullYear() === year && now.getMonth() === month && now.getDate() === day;
+
+      const tomorrow = new Date(now);
+      tomorrow.setDate(now.getDate() + 1);
+      const isTomorrow =
+        tomorrow.getFullYear() === year &&
+        tomorrow.getMonth() === month &&
+        tomorrow.getDate() === day;
+
+      const formatted = eventDate.toLocaleDateString("es-ES", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
+      const capitalized = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+
+      if (isToday) return `Hoy — ${capitalized}`;
+      if (isTomorrow) return `Mañana — ${capitalized}`;
+      return capitalized;
+    }
+    return dateStr;
+  } catch {
+    return dateStr;
+  }
+}
+
 export function NewsSection() {
   const [data, setData] = React.useState<NewsApiResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -468,7 +505,7 @@ export function NewsSection() {
                     <div className="flex items-center gap-2">
                       <CalendarDays className="h-4 w-4 text-slate-500" />
                       <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        {dateStr}
+                        {formatDateHeader(dateStr)}
                       </span>
                     </div>
                     <span className="text-[11px] font-medium text-slate-500">

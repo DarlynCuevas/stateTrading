@@ -8,19 +8,19 @@ const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutos
 
 // Diccionario de traducción de eventos macro comunes al español
 const TRANSLATION_MAP: Record<string, { title: string; desc: string }> = {
-  "cpi": { title: "IPC / Inflación Mensual", desc: "Índice de Precios al Consumo. Volatilidad máxima." },
+  "core retail sales": { title: "Ventas Minoristas Subyacentes (Core)", desc: "Gasto del consumidor excluyendo vehículos. Mayor precisión en la tendencia de consumo." },
+  "retail sales": { title: "Ventas Minoristas Mensuales", desc: "Indicador fundamental de consumo y gasto de los hogares en EE.UU." },
   "core cpi": { title: "IPC Subyacente", desc: "Medida clave de inflación sin alimentos ni energía." },
-  "ppi": { title: "IPP (Precios al Productor)", desc: "Inflación mayorista que anticipa presiones al consumidor." },
+  "cpi": { title: "IPC / Inflación Mensual", desc: "Índice de Precios al Consumo. Volatilidad máxima." },
   "core ppi": { title: "IPP Subyacente", desc: "Precios al productor excluyendo componentes volátiles." },
+  "ppi": { title: "IPP (Precios al Productor)", desc: "Inflación mayorista que anticipa presiones al consumidor." },
   "non-farm employment change": { title: "Nóminas No Agrícolas (NFP)", desc: "Informe mensual clave del empleo en EE.UU." },
   "unemployment rate": { title: "Tasa de Desempleo", desc: "Porcentaje de fuerza laboral sin empleo." },
   "federal funds rate": { title: "Tipos de Interés de la Fed (FOMC)", desc: "Decisión de política monetaria del banco central estadounidense." },
   "fomc statement": { title: "Comunicado del FOMC", desc: "Perspectivas y guía futura sobre tipos de interés." },
   "fomc press conference": { title: "Rueda de Prensa de Jerome Powell", desc: "Intervención del presidente de la Reserva Federal." },
-  "gdp": { title: "PIB (Producto Interior Bruto)", desc: "Crecimiento de la economía nacional." },
   "advance gdp": { title: "PIB Preliminar", desc: "Primera estimación del crecimiento trimestral." },
-  "retail sales": { title: "Ventas Minoristas", desc: "Indicador fundamental de consumo y gasto del consumidor." },
-  "core retail sales": { title: "Ventas Minoristas Subyacentes", desc: "Consumo excluyendo automóviles." },
+  "gdp": { title: "PIB (Producto Interior Bruto)", desc: "Crecimiento de la economía nacional." },
   "ism manufacturing pmi": { title: "PMI Manufacturero ISM", desc: "Salud y actividad de la industria fabril." },
   "ism services pmi": { title: "PMI de Servicios ISM", desc: "Actividad del sector servicios (mayor parte del PIB)." },
   "unemployment claims": { title: "Peticiones Semanales de Subsidio por Desempleo", desc: "Solicitudes semanales de desempleo." },
@@ -32,9 +32,12 @@ const TRANSLATION_MAP: Record<string, { title: string; desc: string }> = {
 
 function translateEvent(englishTitle: string): { title: string; desc: string } {
   const lower = englishTitle.toLowerCase();
-  for (const [key, val] of Object.entries(TRANSLATION_MAP)) {
+  // Ordenar por longitud descendente para que las frases más específicas (ej: "core retail sales")
+  // se evalúen antes que las genéricas (ej: "retail sales")
+  const sortedKeys = Object.keys(TRANSLATION_MAP).sort((a, b) => b.length - a.length);
+  for (const key of sortedKeys) {
     if (lower.includes(key)) {
-      return { title: val.title, desc: val.desc };
+      return { title: TRANSLATION_MAP[key].title, desc: TRANSLATION_MAP[key].desc };
     }
   }
   return { title: englishTitle, desc: "Evento macroeconómico relevante." };

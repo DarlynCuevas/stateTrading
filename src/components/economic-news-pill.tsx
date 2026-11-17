@@ -20,17 +20,53 @@ import {
 export function EconomicNewsPill({ onOpenFullNews }: { onOpenFullNews?: () => void } = {}) {
   const [modalOpen, setModalOpen] = React.useState(false);
   const [status, setStatus] = React.useState(() => getTodayNewsStatus());
-  const [allWeeklyEvents, setAllWeeklyEvents] = React.useState<EconomicEvent[]>([]);
+  const [allWeeklyEvents, setAllWeeklyEvents] = React.useState<EconomicEvent[]>(() => getWeeklyEconomicEvents());
 
-  // Actualizar el estado del reloj y eventos cada 30 segundos
+  // Cargar eventos reales unificados desde /api/news y sincronizar cada 60s
   React.useEffect(() => {
-    const update = () => {
-      setStatus(getTodayNewsStatus());
-      setAllWeeklyEvents(getWeeklyEconomicEvents());
+    let isMounted = true;
+
+    async function syncEvents() {
+      try {
+        const res = await fetch("/api/news");
+        if (!res.ok) throw new Error("Error fetching /api/news");
+        const json = await res.json();
+        if (json.calendar && Array.isArray(json.calendar) && json.calendar.length > 0) {
+          const events: EconomicEvent[] = json.calendar.map((c: any) => ({
+            id: c.id,
+            title: c.title,
+            currency: c.country,
+            impact: c.impact as "HIGH" | "MEDIUM" | "LOW",
+            dateTime: c.date ? `${c.date}T${c.time || "14:30"}:00` : new Date().toISOString(),
+            timeFormatted: c.time || "14:30",
+            forecast: c.forecast,
+            previous: c.previous,
+            description: c.description || "",
+          }));
+
+          if (isMounted && events.length > 0) {
+            setAllWeeklyEvents(events);
+            setStatus(getTodayNewsStatus(new Date(), events));
+            return;
+          }
+        }
+      } catch {
+        // En caso de fallo o desconexión, fallback al calendario estándar local
+      }
+
+      if (isMounted) {
+        const localEvents = getWeeklyEconomicEvents();
+        setAllWeeklyEvents(localEvents);
+        setStatus(getTodayNewsStatus(new Date(), localEvents));
+      }
+    }
+
+    syncEvents();
+    const interval = setInterval(syncEvents, 60000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
     };
-    update();
-    const interval = setInterval(update, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   const { todayEvents, nextEvent, minutesToNext, isImminent, isInHighRiskWindow } = status;
@@ -45,12 +81,12 @@ export function EconomicNewsPill({ onOpenFullNews }: { onOpenFullNews?: () => vo
           isInHighRiskWindow
             ? "bg-rose-500 text-white animate-pulse shadow-md shadow-rose-500/30"
             : isImminent
-            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/20"
+            ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/40 hover:bg-rose-500/25 animate-pulse"
             : todayEvents.length > 0
-            ? "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/80"
+            ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-500/20"
             : "bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/60"
         }`}
-        title="Calendario Económico de Noticias de Alto Impacto (USD)"
+        title="Calendario Económico de Noticias de Alto Impacto (Carpetas Rojas)"
       >
         {isInHighRiskWindow ? (
           <>
@@ -68,7 +104,7 @@ export function EconomicNewsPill({ onOpenFullNews }: { onOpenFullNews?: () => vo
           </>
         ) : todayEvents.length > 0 ? (
           <>
-            <span className="h-2 w-2 rounded-full bg-amber-500 shrink-0" />
+            <span className="h-2 w-2 rounded-full bg-rose-500 shrink-0" />
             <span>
               {todayEvents.length} {todayEvents.length === 1 ? "noticia roja" : "noticias rojas"} hoy
             </span>
