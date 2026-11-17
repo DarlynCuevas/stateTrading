@@ -131,12 +131,19 @@ export function NewsSection() {
     if (!data?.news) return [];
     return data.news
       .filter((item) => {
+        const query = searchQuery.trim().toLowerCase();
         const matchesSearch =
-          searchQuery.trim() === "" ||
-          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (item.tickers && item.tickers.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
+          query === "" ||
+          item.title.toLowerCase().includes(query) ||
+          item.summary.toLowerCase().includes(query) ||
+          item.source.toLowerCase().includes(query) ||
+          (item.tickers && item.tickers.some((t) => t.toLowerCase().includes(query))) ||
+          (item.impactedAssets &&
+            item.impactedAssets.some(
+              (a) =>
+                a.symbol.toLowerCase().includes(query) ||
+                (a.name && a.name.toLowerCase().includes(query))
+            ));
 
         const matchesCategory =
           selectedCategory === "TODAS" ||
@@ -178,7 +185,15 @@ export function NewsSection() {
     return groups;
   }, [filteredCalendar]);
 
-  const quickTickers = ["NVDA", "NASDAQ", "S&P 500", "FED", "AAPL", "TSLA", "BTC"];
+  const quickTickers = [
+    { label: "NQ (Nasdaq)", query: "NQ" },
+    { label: "MGC (Oro)", query: "MGC" },
+    { label: "MES (S&P)", query: "MES" },
+    { label: "NVDA", query: "NVDA" },
+    { label: "CL (Petróleo)", query: "CL" },
+    { label: "FED", query: "FED" },
+    { label: "BTC", query: "BTC" },
+  ];
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -311,20 +326,27 @@ export function NewsSection() {
               </div>
             </div>
 
-            {/* Accesos rápidos de Tickers / Términos de actualidad */}
+            {/* Accesos rápidos de Tickers / Activos clave (NQ, MGC, MES, etc.) */}
             <div className="flex items-center gap-2 text-xs text-slate-500 pt-1">
-              <span className="text-[11px] font-semibold text-slate-400 shrink-0">Populares:</span>
+              <span className="text-[11px] font-semibold text-slate-400 shrink-0">Filtrar por activo:</span>
               <div className="flex items-center gap-1.5 flex-wrap">
-                {quickTickers.map((ticker) => (
-                  <button
-                    key={ticker}
-                    type="button"
-                    onClick={() => setSearchQuery(ticker)}
-                    className="px-2 py-0.5 rounded-md text-[11px] font-mono bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                  >
-                    #{ticker}
-                  </button>
-                ))}
+                {quickTickers.map((item) => {
+                  const isActive = searchQuery.toLowerCase() === item.query.toLowerCase();
+                  return (
+                    <button
+                      key={item.query}
+                      type="button"
+                      onClick={() => setSearchQuery(isActive ? "" : item.query)}
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-medium transition-colors ${
+                        isActive
+                          ? "bg-blue-600 text-white font-bold"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -411,6 +433,49 @@ export function NewsSection() {
                         <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 line-clamp-3 leading-relaxed">
                           {article.summary}
                         </p>
+                      )}
+
+                      {/* Activos Afectados (Asset Impact Pills idénticos al formato solicitado) */}
+                      {article.impactedAssets && article.impactedAssets.length > 0 && (
+                        <div className="mt-3.5 pt-3 border-t border-slate-100 dark:border-slate-800/60">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                              Activos Afectados:
+                            </span>
+                            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+                              (Impacto estimado)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {article.impactedAssets.map((asset) => {
+                              const isUp = asset.direction === "up" || asset.changePct > 0;
+                              const formattedPct = `${isUp ? "+" : ""}${asset.changePct.toFixed(2)}%`;
+                              const isUserCore = ["NQ", "MGC", "MES"].includes(asset.symbol);
+
+                              return (
+                                <button
+                                  key={asset.symbol}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setSearchQuery(searchQuery.toLowerCase() === asset.symbol.toLowerCase() ? "" : asset.symbol);
+                                  }}
+                                  title={`${asset.name || asset.symbol}: ${isUp ? "Impacto positivo / Alcista" : "Impacto negativo / Bajista"}. Clic para filtrar.`}
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all hover:scale-105 active:scale-95 ${
+                                    isUp
+                                      ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25"
+                                      : "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 hover:bg-rose-500/25"
+                                  } ${isUserCore ? "ring-1 ring-blue-500/40 shadow-sm" : ""}`}
+                                >
+                                  <span>{asset.symbol}</span>
+                                  <span className="text-[12px] leading-none font-sans font-black">{isUp ? "↑" : "↓"}</span>
+                                  <span>{formattedPct}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       )}
                     </div>
 

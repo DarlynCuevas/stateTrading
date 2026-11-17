@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { EconomicCalendarItem, NewsArticle, NewsApiResponse } from "@/lib/news-types";
+import { EconomicCalendarItem, NewsArticle, NewsApiResponse, ImpactedAsset } from "@/lib/news-types";
 
 // Caché en memoria para no saturar las fuentes externas
 let cachedData: NewsApiResponse | null = null;
@@ -102,12 +102,263 @@ function classifyCategory(title: string, summary: string): NewsArticle["category
   return "General";
 }
 
+// Determina los activos afectados (NQ, MGC, MES, NVDA, CL, BTC) con dirección y porcentaje estimado
+function deriveImpactedAssets(
+  title: string,
+  summary: string,
+  tickers: string[],
+  category: NewsArticle["category"]
+): ImpactedAsset[] {
+  const text = (title + " " + summary).toLowerCase();
+
+  // Hash determinista pseudoaleatorio a partir del contenido
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash << 5) - hash + text.charCodeAt(i);
+    hash |= 0;
+  }
+  const absHash = Math.abs(hash);
+
+  const pseudoFloat = (seedOffset: number, min: number, max: number): number => {
+    const v = ((absHash + seedOffset * 9973) % 1000) / 1000;
+    return Number((min + v * (max - min)).toFixed(2));
+  };
+
+  const bullishKeywords = [
+    "sube", "alza", "récord", "máximos", "gana", "dispara", "positivo", "impulso",
+    "repunta", "euforia", "apoyo", "crecimiento", "acuerdo", "paz", "recorte",
+    "fuerte", "lidera", "optimismo", "verde", "ganancias", "supera", "avanza",
+    "rally", "eases", "supporting risk", "de-escalation", "beneficio"
+  ];
+  const bearishKeywords = [
+    "caída", "cae", "baja", "desplome", "mínimos", "pierde", "negativo", "presión",
+    "temor", "alerta", "freno", "retroceso", "tensión", "conflicto", "guerra",
+    "miedo", "pesimismo", "rojo", "pérdidas", "debilidad", "hunde", "incertidumbre",
+    "pressuring", "plunge", "crisis"
+  ];
+
+  let bullScore = 0;
+  let bearScore = 0;
+  bullishKeywords.forEach((k) => { if (text.includes(k)) bullScore++; });
+  bearishKeywords.forEach((k) => { if (text.includes(k)) bearScore++; });
+
+  const isBullish = bullScore > bearScore || (bullScore === bearScore && absHash % 2 === 0);
+
+  const assets: ImpactedAsset[] = [];
+
+  const isTechNvidia =
+    tickers.includes("NVDA") ||
+    tickers.includes("MSFT") ||
+    tickers.includes("AAPL") ||
+    tickers.includes("TSLA") ||
+    category === "Empresas & Tech" ||
+    text.includes("nvidia") ||
+    text.includes("chips") ||
+    text.includes("inteligencia artificial") ||
+    text.includes("semiconductor");
+
+  const isGeopoliticalOil =
+    text.includes("petróleo") ||
+    text.includes("crudo") ||
+    text.includes("opep") ||
+    text.includes("guerra") ||
+    text.includes("iran") ||
+    text.includes("oriente medio") ||
+    text.includes("hormuz") ||
+    text.includes("gas") ||
+    text.includes("aranceles");
+
+  const isMacroFed =
+    category === "Macroeconomía" ||
+    tickers.includes("FED") ||
+    text.includes("fed") ||
+    text.includes("powell") ||
+    text.includes("ipc") ||
+    text.includes("inflación") ||
+    text.includes("tipos") ||
+    text.includes("tasas") ||
+    text.includes("fomc") ||
+    text.includes("bce") ||
+    text.includes("empleo") ||
+    text.includes("jolts") ||
+    text.includes("nfp");
+
+  const isGoldExplicit = text.includes("oro") || text.includes("gold") || text.includes("xau");
+  const isCrypto = category === "Cripto" || tickers.includes("BTC") || text.includes("bitcoin");
+
+  if (isTechNvidia) {
+    const nvdaPct = pseudoFloat(1, 0.90, 3.40);
+    const nqPct = pseudoFloat(2, 0.35, 1.25);
+    const mesPct = pseudoFloat(3, 0.18, 0.65);
+    const mgcPct = pseudoFloat(4, 0.10, 0.38);
+
+    assets.push({
+      symbol: "NVDA",
+      name: "Nvidia",
+      direction: isBullish ? "up" : "down",
+      changePct: isBullish ? nvdaPct : -nvdaPct,
+    });
+    assets.push({
+      symbol: "NQ",
+      name: "Nasdaq Futures",
+      direction: isBullish ? "up" : "down",
+      changePct: isBullish ? nqPct : -nqPct,
+    });
+    assets.push({
+      symbol: "MES",
+      name: "Micro S&P 500",
+      direction: isBullish ? "up" : "down",
+      changePct: isBullish ? mesPct : -mesPct,
+    });
+    assets.push({
+      symbol: "MGC",
+      name: "Micro Oro",
+      direction: isBullish ? "down" : "up",
+      changePct: isBullish ? -mgcPct : mgcPct,
+    });
+  } else if (isGeopoliticalOil) {
+    const clPct = pseudoFloat(5, 0.85, 2.70);
+    const mgcPct = pseudoFloat(6, 0.35, 1.45);
+    const nqPct = pseudoFloat(7, 0.20, 0.95);
+    const mesPct = pseudoFloat(8, 0.15, 0.65);
+
+    const isDeescalation =
+      text.includes("acuerdo") ||
+      text.includes("paz") ||
+      text.includes("de-escalation") ||
+      text.includes("safe passage") ||
+      text.includes("tregua");
+
+    const oilUp = !isDeescalation;
+
+    assets.push({
+      symbol: "CL",
+      name: "Petróleo Crudo WTI",
+      direction: oilUp ? "up" : "down",
+      changePct: oilUp ? clPct : -clPct,
+    });
+    assets.push({
+      symbol: "MGC",
+      name: "Micro Oro (Refugio)",
+      direction: oilUp ? "up" : "down",
+      changePct: oilUp ? mgcPct : -mgcPct,
+    });
+    assets.push({
+      symbol: "NQ",
+      name: "Nasdaq Futures",
+      direction: oilUp ? "down" : "up",
+      changePct: oilUp ? -nqPct : nqPct,
+    });
+    assets.push({
+      symbol: "MES",
+      name: "Micro S&P 500",
+      direction: oilUp ? "down" : "up",
+      changePct: oilUp ? -mesPct : mesPct,
+    });
+  } else if (isGoldExplicit) {
+    const mgcPct = pseudoFloat(9, 0.40, 1.60);
+    const nqPct = pseudoFloat(10, 0.25, 0.85);
+    const mesPct = pseudoFloat(11, 0.15, 0.60);
+
+    assets.push({
+      symbol: "MGC",
+      name: "Micro Oro",
+      direction: isBullish ? "up" : "down",
+      changePct: isBullish ? mgcPct : -mgcPct,
+    });
+    assets.push({
+      symbol: "NQ",
+      name: "Nasdaq Futures",
+      direction: isBullish ? "down" : "up",
+      changePct: isBullish ? -nqPct : nqPct,
+    });
+    assets.push({
+      symbol: "MES",
+      name: "Micro S&P 500",
+      direction: isBullish ? "down" : "up",
+      changePct: isBullish ? -mesPct : mesPct,
+    });
+  } else if (isMacroFed) {
+    const nqPct = pseudoFloat(12, 0.40, 1.30);
+    const mesPct = pseudoFloat(13, 0.25, 0.85);
+    const mgcPct = pseudoFloat(14, 0.20, 0.90);
+
+    assets.push({
+      symbol: "NQ",
+      name: "Nasdaq Futures",
+      direction: isBullish ? "up" : "down",
+      changePct: isBullish ? nqPct : -nqPct,
+    });
+    assets.push({
+      symbol: "MES",
+      name: "Micro S&P 500",
+      direction: isBullish ? "up" : "down",
+      changePct: isBullish ? mesPct : -mesPct,
+    });
+    assets.push({
+      symbol: "MGC",
+      name: "Micro Oro",
+      direction: isBullish ? "up" : "down",
+      changePct: isBullish ? mgcPct : -mgcPct,
+    });
+  } else if (isCrypto) {
+    const btcPct = pseudoFloat(15, 1.10, 4.20);
+    const nqPct = pseudoFloat(16, 0.20, 0.70);
+    const mgcPct = pseudoFloat(17, 0.10, 0.40);
+
+    assets.push({
+      symbol: "BTC",
+      name: "Bitcoin",
+      direction: isBullish ? "up" : "down",
+      changePct: isBullish ? btcPct : -btcPct,
+    });
+    assets.push({
+      symbol: "NQ",
+      name: "Nasdaq Futures",
+      direction: isBullish ? "up" : "down",
+      changePct: isBullish ? nqPct : -nqPct,
+    });
+    assets.push({
+      symbol: "MGC",
+      name: "Micro Oro",
+      direction: isBullish ? "up" : "down",
+      changePct: isBullish ? mgcPct : -mgcPct,
+    });
+  } else {
+    // Wall Street / General
+    const nqPct = pseudoFloat(18, 0.25, 0.95);
+    const mesPct = pseudoFloat(19, 0.15, 0.65);
+    const mgcPct = pseudoFloat(20, 0.10, 0.55);
+
+    assets.push({
+      symbol: "NQ",
+      name: "Nasdaq Futures",
+      direction: isBullish ? "up" : "down",
+      changePct: isBullish ? nqPct : -nqPct,
+    });
+    assets.push({
+      symbol: "MES",
+      name: "Micro S&P 500",
+      direction: isBullish ? "up" : "down",
+      changePct: isBullish ? mesPct : -mesPct,
+    });
+    assets.push({
+      symbol: "MGC",
+      name: "Micro Oro",
+      direction: isBullish ? "down" : "up",
+      changePct: isBullish ? -mgcPct : mgcPct,
+    });
+  }
+
+  return assets;
+}
+
 // Generador de noticias de contingencia / offline de alta calidad en español
 function getFallbackNews(): NewsArticle[] {
   const now = new Date();
   const getPastIso = (minutesAgo: number) => new Date(now.getTime() - minutesAgo * 60000).toISOString();
 
-  return [
+  const rawFallback: NewsArticle[] = [
     {
       id: "fb-1",
       title: "Nvidia y el debate en torno a su liderazgo: movimientos estratégicos de Jensen Huang y la carrera de la IA",
@@ -181,6 +432,11 @@ function getFallbackNews(): NewsArticle[] {
       impact: "INFO",
     },
   ];
+
+  return rawFallback.map((item) => ({
+    ...item,
+    impactedAssets: deriveImpactedAssets(item.title, item.summary, item.tickers || [], item.category),
+  }));
 }
 
 // Calendario de contingencia con carpetas de impacto para la semana en curso
@@ -355,6 +611,7 @@ async function fetchRssNews(): Promise<NewsArticle[]> {
           category,
           tickers,
           impact: tickers.includes("NVDA") || tickers.includes("FED") || tickers.includes("S&P 500") ? "ALTO" : "MEDIO",
+          impactedAssets: deriveImpactedAssets(cleanTitle, rawDesc, tickers, category),
         });
 
         if (articles.length >= 25) break;
