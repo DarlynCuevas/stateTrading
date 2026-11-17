@@ -341,14 +341,17 @@ async function fetchRssNews(): Promise<NewsArticle[]> {
         const category = classifyCategory(cleanTitle, rawDesc);
         const tickers = extractTickers(cleanTitle + " " + rawDesc);
 
+        const parsedDate = new Date(pubDate);
+        const isoDate = !isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : new Date().toISOString();
+
         articles.push({
           id: `rss-${Buffer.from(rawLink.slice(0, 40)).toString("base64")}`,
           title: cleanTitle,
           summary: rawDesc.slice(0, 220) + (rawDesc.length > 220 ? "..." : ""),
           url: rawLink,
           source: rawSource,
-          publishedAt: pubDate,
-          timeAgo: calculateTimeAgo(pubDate),
+          publishedAt: isoDate,
+          timeAgo: calculateTimeAgo(isoDate),
           category,
           tickers,
           impact: tickers.includes("NVDA") || tickers.includes("FED") || tickers.includes("S&P 500") ? "ALTO" : "MEDIO",
@@ -360,6 +363,13 @@ async function fetchRssNews(): Promise<NewsArticle[]> {
       // Ignorar errores individuales para no bloquear el resto
     }
   }
+
+  // Ordenar cronológicamente descendente (más recientes primero)
+  articles.sort((a, b) => {
+    const timeA = new Date(a.publishedAt).getTime();
+    const timeB = new Date(b.publishedAt).getTime();
+    return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+  });
 
   return articles;
 }
@@ -441,7 +451,12 @@ export async function GET() {
       fetchEconomicCalendar(),
     ]);
 
-    const finalNews = liveNews.length > 0 ? liveNews : getFallbackNews();
+    const unsortedNews = liveNews.length > 0 ? liveNews : getFallbackNews();
+    const finalNews = [...unsortedNews].sort((a, b) => {
+      const timeA = new Date(a.publishedAt).getTime();
+      const timeB = new Date(b.publishedAt).getTime();
+      return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+    });
     const finalCalendar = liveCalendar.length > 0 ? liveCalendar : getFallbackCalendar();
 
     // Actualizar caché

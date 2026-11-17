@@ -29,6 +29,24 @@ import {
   Globe,
 } from "lucide-react";
 
+function formatTimeAgo(publishedAt: string): string {
+  try {
+    const pub = new Date(publishedAt).getTime();
+    if (isNaN(pub)) return "Reciente";
+    const now = Date.now();
+    const diffMin = Math.max(0, Math.floor((now - pub) / (1000 * 60)));
+
+    if (diffMin < 2) return "Ahora mismo";
+    if (diffMin < 60) return `Hace ${diffMin} min`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `Hace ${diffHours} h`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `Hace ${diffDays} d`;
+  } catch {
+    return "Reciente";
+  }
+}
+
 function formatDateHeader(dateStr: string): string {
   try {
     const parts = dateStr.split("-");
@@ -108,23 +126,29 @@ export function NewsSection() {
     return () => clearInterval(interval);
   }, [fetchNewsData]);
 
-  // Filtrado de noticias
+  // Filtrado y ordenación cronológica estricta de noticias (las más recientes primero)
   const filteredNews = React.useMemo(() => {
     if (!data?.news) return [];
-    return data.news.filter((item) => {
-      const matchesSearch =
-        searchQuery.trim() === "" ||
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.tickers && item.tickers.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
+    return data.news
+      .filter((item) => {
+        const matchesSearch =
+          searchQuery.trim() === "" ||
+          item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          item.source.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (item.tickers && item.tickers.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
 
-      const matchesCategory =
-        selectedCategory === "TODAS" ||
-        item.category.toLowerCase() === selectedCategory.toLowerCase();
+        const matchesCategory =
+          selectedCategory === "TODAS" ||
+          item.category.toLowerCase() === selectedCategory.toLowerCase();
 
-      return matchesSearch && matchesCategory;
-    });
+        return matchesSearch && matchesCategory;
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.publishedAt).getTime();
+        const timeB = new Date(b.publishedAt).getTime();
+        return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA);
+      });
   }, [data?.news, searchQuery, selectedCategory]);
 
   // Filtrado de calendario
@@ -371,7 +395,7 @@ export function NewsSection() {
 
                         <div className="flex items-center gap-1 text-[11px] text-slate-400 shrink-0">
                           <Clock className="h-3 w-3" />
-                          <span>{article.timeAgo}</span>
+                          <span>{formatTimeAgo(article.publishedAt)}</span>
                         </div>
                       </div>
 
